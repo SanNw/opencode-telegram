@@ -1,5 +1,7 @@
 # Instalação em Linux / WSL
 
+Para instalação sem WSL, siga [Windows nativo (PowerShell)](windows-native.md). Não compartilhe `node_modules` entre sistemas operacionais.
+
 ## Preparar
 
 Instale Node.js 22+, Git e OpenCode. Execute OpenCode e Bridge no mesmo Linux/WSL. A interface pode ser acessada pelo Telegram em outros sistemas, mas isso não significa que todos os hosts de instalação tenham sido validados.

@@ -9,6 +9,21 @@ concurrency:
   group: validate-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  windows-native:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm.cmd ci
+      - run: npm.cmd run check
+      - run: npm.cmd test
+      - run: npm.cmd run build
+      - run: npm.cmd run test:runtime
+      - run: npm.cmd audit --omit=dev --audit-level=high
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -22,6 +37,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+      - run: npm run test:runtime
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
       - name: Verify browser interface and isolated HTML preview

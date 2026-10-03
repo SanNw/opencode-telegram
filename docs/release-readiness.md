@@ -4,6 +4,8 @@
 
 The current installation is a single-owner WSL/Linux deployment with an external OpenCode server and Cloudflare tunnel. The Linux image build, read-only runtime and isolated health smoke test have been executed successfully; this is not evidence of Windows/macOS container support or authenticated container operation. Real Telegram Android/Desktop reconnection, keyboard and device-recovery checks remain manual acceptance gates; HTTP health alone cannot validate an authenticated conversation.
 
+Native Windows installation is documented in [Windows native](windows-native.md). On 2026-10-03 an isolated Windows Node 22.18 installation completed `npm ci` (zero audit findings), all 101 Bridge and 34 Mini App tests, type checking and production build. This evidence does not validate Docker Desktop, physical Telegram authentication, login tasks or OpenCode inference on Windows. The Windows CI job is added but must pass after publication; local execution is not a hosted-CI result.
+
 ## Container deployment (optional, Linux only)
 
 The Dockerfile builds and tests both workspaces and runs as an unprivileged user. Compose uses **host networking** because the Bridge deliberately only binds loopback. It does not publish a host port or install OpenCode/cloudflared. Host networking reduces network isolation; use it only on a trusted single-owner Linux host. Docker Desktop/Windows/macOS are not validated targets for this configuration.
@@ -50,6 +52,22 @@ Browser viewport and lifecycle checks are evidence for the web application only.
 - Run a full actual-device Telegram matrix: network loss, background/resume, expired authentication, blocked keyboard viewport, revoked device and long response.
 - Exercise restart/reboot and restore from backup. Record platform/version and results, not assumptions.
 - Complete independent security review and document findings. Repository secret scanning/push protection must be enabled separately where available.
-- Choose license and support policy with the project owner before public redistribution. No license was invented by this change.
+- MIT was selected by the owner and the repository is public as a beta. Do not imply formal security certification or a support SLA.
+
+## Open work and scope boundaries
+
+| Item | Status / required evidence |
+| --- | --- |
+| Native Windows dependencies, file paths, tests and build | Locally validated; see Windows guide. Hosted Windows CI must run after publication. |
+| Actual Telegram Android/Desktop behavior | Physical matrix still required; mock browser results cannot close it. |
+| Windows startup/login, reboot and tunnel reconnect | Requires a configured native installation and an actual login/reboot test; no production WSL migration was performed. |
+| Restore from backup | Must be exercised on a disposable instance before operational reliance. |
+| Independent security review | External review remains a release gate, not a claim made by the implementer. |
+| Translation completeness | Six languages supported; untranslated application text still falls back to English. |
+| Skills/plugin editing and persistent MCP configuration | Requires a supported upstream write contract, validation and explicit approved operations. Do not silently edit raw OpenCode configuration to simulate unavailable capabilities. |
+| Single owner / loopback / exact management allowlist | Intentional security boundaries, not defects to remove. Multiuser/network exposure needs a separately designed threat model. |
+| Docker Desktop/macOS host support | Not validated; native Windows instructions do not imply container portability. |
+
+Do not mark the project complete by deleting these qualifications. Each validation-dependent item needs dated evidence; upstream-dependent features need a tested contract before implementation.
 
 The initial implementation report is historical, not a current feature matrix. Read runtime capabilities and current tests together with the normative specification; unavailable upstream capabilities should remain explicitly unavailable.

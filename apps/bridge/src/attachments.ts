@@ -124,7 +124,9 @@ export class AttachmentService {
     sourcePath: string
     filename?: string
   }): Promise<RegisteredAttachment | undefined> {
-    if (!input.sourcePath || input.sourcePath.includes("\0") || /^[A-Za-z]:[\\/]/.test(input.sourcePath)) {
+    // Windows absolute paths are valid only on a native Windows host. The
+    // canonical workspace containment check below still rejects other drives.
+    if (!input.sourcePath || input.sourcePath.includes("\0") || (process.platform !== "win32" && /^[A-Za-z]:[\\/]/.test(input.sourcePath))) {
       return undefined
     }
     const root = await this.#rootPromise

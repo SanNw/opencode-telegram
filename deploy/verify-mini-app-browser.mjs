@@ -170,7 +170,26 @@ try {
     evidence.push({ check: `long token, fenced code and Markdown table stay inside chat at ${width}px`, passed: true });
   }
   await evaluate("document.querySelector('[aria-label=\"Back to dashboard\"]').click()"); await viewport(390, 844, true);
-  await click('Settings'); await click('Integrations'); await wait(text('Official API fixture'));
+  await click('Settings'); await click('AI & Tools'); await wait("document.querySelectorAll('.theme-options input').length===3");
+  for (const theme of ['light', 'dark', 'system']) {
+    await evaluate(`document.querySelector('.theme-options input[value="${theme}"]').click()`);
+    assert.equal(await evaluate("localStorage.getItem('opencode-telegram-theme')"), theme);
+    const expectedTheme = theme === 'system' ? await evaluate("matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'") : theme;
+    assert.equal(await evaluate("document.documentElement.dataset.theme"), expectedTheme);
+    for (const width of [320, 390, 1280]) {
+      await viewport(width, 844, width <= 700);
+      assert.ok(await evaluate("document.documentElement.scrollWidth<=innerWidth+1 && Array.from(document.querySelectorAll('.theme-choice')).every(e=>{const r=e.getBoundingClientRect();return r.width>70 && r.left>=0 && r.right<=innerWidth})"));
+    }
+    await viewport(390, 844, true);
+    if (theme !== 'system') await screenshot(`theme-selector-${theme}`);
+  }
+  await evaluate("document.querySelector('.theme-options input[value=system]').focus()");
+  await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+  await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+  await wait("document.querySelector('.theme-options input[value=light]').checked");
+  await evaluate("document.querySelector('.theme-options input[value=system]').click()");
+  evidence.push({ check: 'theme tiles preserve saved light/dark/system selection, native keyboard navigation and geometry at 320/390/1280px', passed: true });
+  await click('Integrations'); await wait(text('Official API fixture'));
   for (const width of [320, 390, 1280]) {
     await viewport(width, 844, width <= 700);
     const layout = await evaluate("(()=>{const m=document.querySelector('.integration-manager'),next=m.nextElementSibling;return {width:innerWidth,scroll:document.documentElement.scrollWidth,gap:next.getBoundingClientRect().top-m.getBoundingClientRect().bottom,servers:m.querySelectorAll('.mcp-server').length}})()");

@@ -13,7 +13,8 @@
     "start": "npm run start --workspace @opencode-telegram/bridge",
     "test": "npm run test --workspaces --if-present",
     "test:browser": "node deploy/verify-mini-app-browser.mjs",
-    "test:preview": "node deploy/verify-html-preview.mjs"
+    "test:preview": "node deploy/verify-html-preview.mjs",
+    "test:runtime": "node deploy/verify-native-runtime.mjs"
   },
   "engines": {
     "node": ">=20"

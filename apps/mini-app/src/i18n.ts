@@ -7,7 +7,9 @@ export function detectLanguage(languages: readonly string[]): Language {
   }
   return "en"
 }
-export const language = detectLanguage(typeof navigator === "undefined" ? [] : navigator.languages?.length ? navigator.languages : [navigator.language])
+// Node also exposes navigator on recent versions. Only a browser locale should
+// determine the UI; server rendering must not inherit the host machine locale.
+export const language = detectLanguage(typeof window === "undefined" || typeof navigator === "undefined" ? [] : navigator.languages?.length ? navigator.languages : [navigator.language])
 // Only application-authored strings enter this dictionary. Never translate model output or names.
 const translations: Record<string, [string, string, string, string, string]> = {
   "Independent recovery protects your OpenCode access and security changes.": ["A recuperação independente protege seu acesso ao OpenCode e as alterações de segurança.", "La recuperación independiente protege tu acceso a OpenCode y los cambios de seguridad.", "独立恢复保护你的 OpenCode 访问和安全设置更改。", "La récupération indépendante protège votre accès à OpenCode et les changements de sécurité.", "स्वतंत्र पुनर्प्राप्ति आपके OpenCode पहुँच और सुरक्षा बदलावों की रक्षा करती है।"],

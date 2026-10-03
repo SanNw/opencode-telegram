@@ -95,6 +95,24 @@ test("active content is forced to download instead of being rendered inline", as
   }
 })
 
+test("native absolute workspace paths are accepted without allowing paths outside the workspace", async () => {
+  const { base, workspace, store, service } = await fixture()
+  try {
+    const path = join(workspace, "native.txt")
+    await writeFile(path, "native file")
+    const registered = await service.register({ userId: "owner", sessionId: "session-1", sourcePath: path })
+    assert(registered)
+    assert.equal((await service.read("owner", registered.attachmentId)).content.toString(), "native file")
+    const outside = join(base, "outside.txt")
+    await writeFile(outside, "not authorized")
+    assert.equal(await service.register({ userId: "owner", sessionId: "session-1", sourcePath: outside }), undefined)
+    assert.equal(await service.register({ userId: "owner", sessionId: "session-1", sourcePath: "Z:/not-authorized/file.txt" }), undefined)
+  } finally {
+    store.close()
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
 test("storage browsing returns only opaque handles for workspace children", async () => {
   const { base, workspace, store, service } = await fixture()
   try {
