@@ -751,7 +751,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
             </p>
           )}
           {snapshot && page === "home" && (
-            <section className="page active">
+            <section className="page active" key="home">
               <div className="flex between mb">
                 <div className="grow">
                   <div className="heading">Dashboard</div>
@@ -906,7 +906,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
             </section>
           )}
           {snapshot && page === "projects" && (
-            <section className="page active">
+            <section className="page active" key="projects">
               <div className="heading">Projects</div>
               <div className="small muted mb">
                 OpenCode workspaces available on this installation.
@@ -954,7 +954,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
             </section>
           )}
           {snapshot && page === "agents" && (
-            <section className="page active">
+            <section className="page active" key="agents">
               <div className="heading">Agents</div>
               <div className="small muted mb">
                 Monitor models, activity and capability access.
@@ -1061,7 +1061,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
             </section>
           )}
           {page === "settings" && (
-            <section className="page active">
+            <section className="page active" key="settings">
               <div className="heading">Settings</div>
               <div className="small muted mb">
                 OpenCode, integrations and security.
