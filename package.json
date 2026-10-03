@@ -11,7 +11,9 @@
     "check": "npm run check --workspaces --if-present",
     "dev": "npm run dev --workspace @opencode-telegram/bridge",
     "start": "npm run start --workspace @opencode-telegram/bridge",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "test:browser": "node deploy/verify-mini-app-browser.mjs",
+    "test:preview": "node deploy/verify-html-preview.mjs"
   },
   "engines": {
     "node": ">=20"

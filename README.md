@@ -36,6 +36,8 @@ After building, verify the browser boundary using an installed Chromium executab
 CHROME_BINARY=/absolute/path/to/chrome node deploy/verify-html-preview.mjs
 ```
 
+The CI also runs the Mini App browser suite with Node.js 22 and Chromium. Run it locally with `CHROME_BINARY=/absolute/path/to/chrome npm run test:browser` after building. See [browser validation](docs/browser-validation.md) for coverage, evidence and the distinction from physical Telegram acceptance.
+
 ## Runtime requirements
 
 - Node.js 20 or newer

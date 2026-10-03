@@ -24,6 +24,30 @@ jobs:
       - run: npm run build
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+      - name: Verify browser interface and isolated HTML preview
+        run: |
+          browser_binary=""
+          for candidate in google-chrome google-chrome-stable chromium chromium-browser; do
+            if command -v "$candidate" >/dev/null 2>&1; then
+              browser_binary="$(command -v "$candidate")"
+              break
+            fi
+          done
+          if [ -z "$browser_binary" ]; then
+            echo "No Chromium executable found on this runner. Browser verification cannot be skipped."
+            exit 1
+          fi
+          export CHROME_BINARY="$browser_binary"
+          npm run test:browser
+          npm run test:preview
+      - name: Preserve isolated browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence
+          path: test-results/browser/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Validate container configuration with placeholder credentials
         run: |
           cp .env.example .env

@@ -19,3 +19,11 @@ This checklist is deliberately not marked passed by server health, unit tests or
 | Approved Git action on disposable repository | Pending | Pending | Explicit approval/elevation required; only selected commit paths or validated upstream branch are affected. |
 
 Never test emergency lock without first saving the key and having access to the local installation. Do not use production repositories for destructive experimentation. A failed upstream abort must be recorded separately from the successful access lock.
+
+## Recording an acceptance run
+
+Create a separate dated report with device/OS, Telegram version, application commit and each result (`Pass`, `Fail` or `Not tested`). Do not put Recovery Keys, pairing codes, tokens or signed Telegram initialization into the report or screenshots. Mark the table above only from actual-client evidence, never from the mock browser suite.
+
+Start with the non-destructive scenarios: opening from the bot, navigation, keyboard, rotation/resize, long response, background/resume and network reconnection. Save evidence of any overflow, duplicate message, empty bubble or inaccessible composer. Security mutations should be tested afterward on a disposable isolated installation with a saved Recovery Key and local administrative access.
+
+The automated companion is documented in `browser-validation.md`. Its 401/403 and clock simulation check frontend behavior but do not substitute for the physical matrix.

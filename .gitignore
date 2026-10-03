@@ -9,6 +9,7 @@ data/
 .codex-remote-attachments/
 .superpowers/
 graphify-out/
+test-results/
 *.sqlite
 *.sqlite-*
 *.db

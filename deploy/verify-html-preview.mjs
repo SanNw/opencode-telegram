@@ -7,7 +7,7 @@ import { join } from "node:path"
 import { createRequestHandler } from "../apps/bridge/dist/app.js"
 
 // Run after build: CHROME_BINARY=/path/to/chrome node deploy/verify-html-preview.mjs
-const chrome = process.env.CHROME_BINARY
+const chrome = process.env.CHROME_BINARY || process.argv[2]
 assert(chrome, "Set CHROME_BINARY to an installed Chromium executable")
 const profile = await mkdtemp(join(tmpdir(), "bridge-preview-check-"))
 let forbiddenRequests = 0
