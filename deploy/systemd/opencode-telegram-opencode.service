@@ -1,0 +1,19 @@
+[Unit]
+Description=OpenCode server for Telegram Bridge
+After=network-online.target opencode-telegram-jev.service
+Wants=network-online.target
+Requires=opencode-telegram-jev.service
+
+[Service]
+Type=simple
+User=developer
+WorkingDirectory=/mnt/e/Projetos/Opencode telegram
+ExecStart=/usr/local/lib/opencode-telegram-start-opencode
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+[Unit]
+Description=OpenCode Telegram Bridge and Mini App
+After=network-online.target opencode-telegram-opencode.service
+Wants=network-online.target
+Requires=opencode-telegram-opencode.service
+
+[Service]
+Type=simple
+User=developer
+WorkingDirectory=/mnt/e/Projetos/Opencode telegram
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node "/mnt/e/Projetos/Opencode telegram/apps/bridge/dist/server.js"
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

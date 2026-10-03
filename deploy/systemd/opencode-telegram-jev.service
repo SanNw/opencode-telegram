@@ -1,0 +1,18 @@
+[Unit]
+Description=Jev Gateway for OpenCode Telegram
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=developer
+EnvironmentFile=/home/developer/.jev-gateway/.env
+ExecStart=/mnt/e/Projetos/Opencode\x20telegram/deploy/systemd/start-jev-opencode.sh
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

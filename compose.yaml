@@ -1,0 +1,26 @@
+# Linux Docker Engine only: preserves the Bridge's loopback-only listener.
+# The host must already run OpenCode and cloudflared. Do not add ports: mappings.
+services:
+  bridge:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    environment:
+      BRIDGE_HOST: 127.0.0.1
+      BRIDGE_DATABASE_PATH: /app/data/bridge.sqlite
+      OPENCODE_DIRECTORY: ${OPENCODE_DIRECTORY:?Set the absolute OpenCode workspace path in .env}
+    volumes:
+      - bridge-data:/app/data
+      - type: bind
+        source: ${OPENCODE_DIRECTORY:?Set the absolute OpenCode workspace path in .env}
+        target: ${OPENCODE_DIRECTORY:?Set the absolute OpenCode workspace path in .env}
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  bridge-data:

@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/test-dist
+.git
+.env
+.env.*
+**/*.sqlite*
+**/*.db*
+**/*.log
+data
+.codex-remote-attachments
+.github
+wireframe
+docs
+.superpowers
+graphify-out

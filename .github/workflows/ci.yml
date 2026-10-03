@@ -1,0 +1,32 @@
+name: Validate
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Validate container configuration with placeholder credentials
+        run: |
+          cp .env.example .env
+          OPENCODE_DIRECTORY="$GITHUB_WORKSPACE" docker compose config --quiet
+      - name: Build container (does not publish or deploy)
+        run: docker build --tag opencode-telegram:ci .
