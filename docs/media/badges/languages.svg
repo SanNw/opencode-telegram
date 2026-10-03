@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="154" height="28" viewBox="0 0 154 28" role="img" aria-labelledby="title">
+  <title id="title">Mini App: six interface languages</title>
+  <rect x=".5" y=".5" width="153" height="27" rx="8" fill="#172137" stroke="#2a3852"/>
+  <path d="M121 1h25a7 7 0 0 1 7 7v12a7 7 0 0 1-7 7h-25Z" fill="#203b5d"/>
+  <g fill="none" stroke="#65a8ff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="14" cy="14" r="5"/><ellipse cx="14" cy="14" rx="2" ry="5"/><path d="M9 14h10"/>
+  </g>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" text-anchor="middle">
+    <text x="71" y="18" fill="#9baac4">LANGUAGES</text>
+    <text x="137" y="18" fill="#eff5ff">6</text>
+  </g>
+</svg>

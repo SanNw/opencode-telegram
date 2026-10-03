@@ -2,6 +2,12 @@
 
 # OpenCode Telegram
 
+<p align="center">
+  <a href="https://github.com/SanNw/opencode-telegram/releases"><img src="docs/media/badges/beta.svg" alt="Release channel: beta" height="28"></a>
+  <a href="LICENSE"><img src="docs/media/badges/license.svg" alt="License: MIT" height="28"></a>
+  <a href="#english"><img src="docs/media/badges/languages.svg" alt="Mini App: six interface languages" height="28"></a>
+</p>
+
 [English](#english) · [Português](#português) · [Español](#español)
 
 ## English

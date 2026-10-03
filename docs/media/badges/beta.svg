@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="28" viewBox="0 0 140 28" role="img" aria-labelledby="title">
+  <title id="title">Release channel: beta</title>
+  <rect x=".5" y=".5" width="139" height="27" rx="8" fill="#172137" stroke="#2a3852"/>
+  <path d="M83 1h49a7 7 0 0 1 7 7v12a7 7 0 0 1-7 7H83Z" fill="#203b5d"/>
+  <circle cx="14" cy="14" r="3" fill="#65a8ff"/>
+  <g font-family="Verdana,Arial,sans-serif" font-size="11" text-anchor="middle">
+    <text x="49" y="18" fill="#9baac4">CHANNEL</text>
+    <text x="111" y="18" fill="#eff5ff">BETA</text>
+  </g>
+</svg>
