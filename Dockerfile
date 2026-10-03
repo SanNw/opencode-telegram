@@ -1,6 +1,6 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ git ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/bridge/package.json ./apps/bridge/
 COPY apps/mini-app/package.json ./apps/mini-app/
@@ -9,6 +9,7 @@ COPY apps ./apps
 RUN npm run check && npm test && npm run build && npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production BRIDGE_HOST=127.0.0.1 BRIDGE_DATABASE_PATH=/app/data/bridge.sqlite
 COPY --from=build --chown=node:node /app/package.json ./
