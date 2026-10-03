@@ -1,8 +1,9 @@
+import { t } from "../i18n.js"
 import { useMemo } from "react"
 import { countDiffLines } from "./DiffViewer.js"
 import type { FileChange, FileChangeStatus } from "./chat-types.js"
 
-const statusLabel: Record<FileChangeStatus, string> = { created: "Created", modified: "Modified", deleted: "Deleted", renamed: "Renamed" }
+const statusLabel: Record<FileChangeStatus, string> = { created: t("Created"), modified: t("Modified"), deleted: t("Deleted"), renamed: t("Renamed") }
 
 export type ChangeSummaryProps = { changes: FileChange[]; title?: string; onSelect?: (change: FileChange) => void }
 

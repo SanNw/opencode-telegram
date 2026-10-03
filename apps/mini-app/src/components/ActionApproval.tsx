@@ -1,3 +1,4 @@
+import { t } from "../i18n.js"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { controlErrorMessage, controlRequest, secondsRemaining, type ControlContext, type Proposal } from "../control-api.js"
 import { isolateModalBackground } from "../modal-boundary.js"
@@ -51,5 +52,5 @@ export function ActionApproval({ proposal, context, onDone, onDismiss, onFailure
     } catch (failure) { setError(controlErrorMessage(failure)); onFailure?.(failure) }
     finally { setBusy(false) }
   }
-  return <FocusDialog titleId="action-approval-title"><small>Permission required</small><h2 id="action-approval-title">Review this action</h2><blockquote>{proposal.summary}</blockquote><p className="tiny muted">Requires a current privileged session. {expired ? "This proposal expired. Dismiss it and review a new action." : "Approval applies only to this action."}</p>{error && <p role="alert">{error}</p>}<div><button type="button" disabled={busy} onClick={() => approvalSecondaryAction(expired, error) === "dismiss" ? onDismiss() : void decide("deny")}>{error || expired ? "Dismiss" : "Deny"}</button><button type="button" className="primary" disabled={busy || expired || Boolean(error)} onClick={() => void decide("approve")}>{busy ? "Working…" : "Approve"}</button></div></FocusDialog>
+  return <FocusDialog titleId="action-approval-title"><small>{t("Permission required")}</small><h2 id="action-approval-title">{t("Review this action")}</h2><blockquote>{proposal.summary}</blockquote><p className="tiny muted">Requires a current privileged session. {expired ? "This proposal expired. Dismiss it and review a new action." : "Approval applies only to this action."}</p>{error && <p role="alert">{error}</p>}<div><button type="button" disabled={busy} onClick={() => approvalSecondaryAction(expired, error) === "dismiss" ? onDismiss() : void decide("deny")}>{error || expired ? "Dismiss" : t("Deny")}</button><button type="button" className="primary" disabled={busy || expired || Boolean(error)} onClick={() => void decide("approve")}>{busy ? "Working…" : t("Approve")}</button></div></FocusDialog>
 }

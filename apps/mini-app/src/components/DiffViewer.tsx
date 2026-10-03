@@ -1,3 +1,4 @@
+import { t } from "../i18n.js"
 import { useMemo, useState } from "react"
 import { Icon } from "./Icon.js"
 import type { DiffData, FileChangeStatus } from "./chat-types.js"
@@ -30,7 +31,7 @@ export function countDiffLines(diff: string): { additions: number; deletions: nu
   return parseUnifiedDiff(diff).reduce((total, line) => ({ additions: total.additions + Number(line.kind === "addition"), deletions: total.deletions + Number(line.kind === "deletion") }), { additions: 0, deletions: 0 })
 }
 
-const statusLabel: Record<FileChangeStatus, string> = { created: "Created", modified: "Modified", deleted: "Deleted", renamed: "Renamed" }
+const statusLabel: Record<FileChangeStatus, string> = { created: t("Created"), modified: t("Modified"), deleted: t("Deleted"), renamed: t("Renamed") }
 
 export type DiffViewerProps = DiffData & { defaultOpen?: boolean; onOpenFile?: ((fileId: string) => void) | undefined }
 
@@ -46,7 +47,7 @@ export function DiffViewer({ file, fileId, diff, status = "modified", additions,
       </button>
       <span className="diff-viewer__status">{statusLabel[status]}</span>
       <span className="diff-viewer__counts"><b>+{additions ?? counts.additions}</b> <b>−{deletions ?? counts.deletions}</b></span>
-      {onOpenFile && fileId && <button className="diff-viewer__open" type="button" onClick={() => onOpenFile(fileId)}>Open file</button>}
+      {onOpenFile && fileId && <button className="diff-viewer__open" type="button" onClick={() => onOpenFile(fileId)}>{t("Open file")}</button>}
     </header>
     {open && <div className="diff-viewer__body" role="table" aria-label={`Changes in ${file}`} tabIndex={0}>
       {lines.map((line, index) => <div className={`diff-line diff-line--${line.kind}`} role="row" key={`${index}-${line.content}`}>
@@ -54,7 +55,7 @@ export function DiffViewer({ file, fileId, diff, status = "modified", additions,
         <span className="diff-line__number" role="cell">{line.newNumber ?? ""}</span>
         <code role="cell">{line.content || " "}</code>
       </div>)}
-      {boundedDiff(diff).truncated && <p className="content-truncated" role="status">Diff truncated for safe display.</p>}
+      {boundedDiff(diff).truncated && <p className="content-truncated" role="status">{t("Diff truncated for safe display.")}</p>}
     </div>}
   </section>
 }

@@ -1,3 +1,4 @@
+import { t } from "../i18n.js"
 import { useEffect, useState } from "react"
 
 type Totals = { messages: number; input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number; cost: number }
@@ -25,19 +26,19 @@ export function UsagePanel({ onUnauthorized }: { onUnauthorized: () => void }) {
     return () => { active = false; clearInterval(timer) }
   }, [period, onUnauthorized])
   return <div className="card usage-panel">
-    <strong>Usage history</strong>
-    <div className="tabs" aria-label="Usage period">{[["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(([id, label]) => <button className={`tab ${period === id ? "active" : ""}`} key={id} type="button" aria-pressed={period === id} onClick={() => setPeriod(id!)}>{label}</button>)}</div>
-    {error && <p role="alert">Usage could not be refreshed.</p>}
-    {!data && !error && <p className="loading">Loading usage…</p>}
+    <strong>{t("Usage history")}</strong>
+    <div className="tabs" aria-label="Usage period">{[["today", t("Today")], ["week", t("7 days")], ["month", t("30 days")]].map(([id, label]) => <button className={`tab ${period === id ? "active" : ""}`} key={id} type="button" aria-pressed={period === id} onClick={() => setPeriod(id!)}>{label}</button>)}</div>
+    {error && <p role="alert">{t("Usage could not be refreshed.")}</p>}
+    {!data && !error && <p className="loading">{t("Loading usage…")}</p>}
     {data && <>
-      <p className="tiny muted">UTC · OpenCode-reported cost, not a billing statement.</p>
-      <div className="usage-values"><div><span>Input</span><strong>{data.totals.input.toLocaleString()}</strong></div><div><span>Output</span><strong>{data.totals.output.toLocaleString()}</strong></div><div><span>Reasoning</span><strong>{data.totals.reasoning.toLocaleString()}</strong></div></div>
+      <p className="tiny muted">{t("UTC · OpenCode-reported cost, not a billing statement.")}</p>
+      <div className="usage-values"><div><span>{t("Input")}</span><strong>{data.totals.input.toLocaleString()}</strong></div><div><span>{t("Output")}</span><strong>{data.totals.output.toLocaleString()}</strong></div><div><span>{t("Reasoning")}</span><strong>{data.totals.reasoning.toLocaleString()}</strong></div></div>
       <p className="small">{data.totals.messages} completed messages · ${data.totals.cost.toFixed(4)}</p>
       <p className="tiny muted">Cache read: {data.totals.cacheRead.toLocaleString()} · write: {data.totals.cacheWrite.toLocaleString()}</p>
-      {data.collection.failed ? <p role="status">Collection interrupted. Showing previously collected records.</p> : data.collection.running ? <p role="status">Synchronizing message history…</p> : null}
+      {data.collection.failed ? <p role="status">{t("Collection interrupted. Showing previously collected records.")}</p> : data.collection.running ? <p role="status">{t("Synchronizing message history…")}</p> : null}
       {data.collection.lastSyncedAt && <p className="tiny muted">Last sync: {new Date(data.collection.lastSyncedAt).toLocaleString()}</p>}
-      {!data.totals.messages && <p className="muted">No completed messages collected in this period.</p>}
-      <details><summary>Daily usage and breakdown</summary>
+      {!data.totals.messages && <p className="muted">{t("No completed messages collected in this period.")}</p>}
+      <details><summary>{t("Daily usage and breakdown")}</summary>
         {[['Daily (UTC)', data.daily], ...Object.entries(data.breakdown)].map(([label, rows]) => <section key={String(label)}><div className="sectionTitle">{label === "projectId" ? "Project" : String(label)}</div><div className="catalog-list">{(rows as Usage["daily"]).map((row) => <div className="row" key={row.label}><span className="grow truncate" title={row.label}>{row.label || "Not reported"}</span><span className="tiny">{(row.input + row.output + row.reasoning).toLocaleString()} tokens · ${row.cost.toFixed(4)}</span></div>)}</div></section>)}
       </details>
     </>}

@@ -92,6 +92,18 @@ button,a.btn,select,input,textarea,summary{transition:background-color var(--mot
 .mcp-server p{margin:0;line-height:1.5}
 .mcp-server .control-actions{margin-top:4px;padding-top:10px;border-top:1px solid var(--border);gap:8px}
 .mcp-server .btn{font-size:12px;font-weight:500;padding-inline:11px}
+:root[data-theme="light"]{color-scheme:light;--bg:#f3f6fb;--panel:#ffffff;--card:#edf2fa;--border:#cbd6e6;--text:#17243a;--muted:#52647e;--accent:#2566b5;--accent-bg:#dceafd;--green:#147d56;--amber:#875500;--red:#b83250}
+:root[data-theme="light"] :is(.soft,.markdown blockquote){background:#e7eef8}
+:root[data-theme="light"] :is(.primary,.btn.primary,.composer .sendbtn,.new-messages){border-color:#91b4df}
+:root[data-theme="light"] .progress{background:#ccd9eb}
+:root[data-theme="light"] :is(.code-block,.diff-viewer,.markdown :not(pre)>code){background:#f7f9fc}
+:root[data-theme="light"] .diff-line--addition{background:#dff3e7}
+:root[data-theme="light"] .diff-line--deletion{background:#fbe5e9}
+:root[data-theme="light"] .diff-line--meta{background:#e5eefb}
+:root[data-theme="light"] .approval .danger-button{background:#f9dfe7}
+:root[data-theme="light"] .tool-activity--error{border-color:#dca0ae}
+.mobileNav button{min-width:0}
+.mobileNav small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:380px){.mcp-server{padding:12px}.mcp-server .control-actions .btn{flex:1 1 auto}}
 @media(max-width:700px){.model-menu{right:8px;top:46px}}
 

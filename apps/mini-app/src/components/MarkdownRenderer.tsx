@@ -1,3 +1,4 @@
+import { t } from "../i18n.js"
 import Markdown, { defaultUrlTransform, type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { CodeBlock } from "./CodeBlock.js"
@@ -35,6 +36,6 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
       unwrapDisallowed
       components={components}
     >{safeContent}</Markdown>
-    {truncated && <p className="content-truncated" role="status">Message truncated for safe display.</p>}
+    {truncated && <p className="content-truncated" role="status">{t("Message truncated for safe display.")}</p>}
   </div>
 }

@@ -93,6 +93,7 @@ try {
   const cdp = (method, params) => send(method, params, sessionId);
   await cdp('Runtime.enable'); await cdp('Page.enable');
   await cdp('Page.addScriptToEvaluateOnNewDocument', { source: 'window.Telegram={WebApp:{initData:"isolated-fixture",platform:"browser",ready(){},expand(){},close(){}}};' });
+  const englishLocale = await cdp('Page.addScriptToEvaluateOnNewDocument', { source: "Object.defineProperty(navigator,'languages',{configurable:true,get:()=>['en-US']})" });
   const evaluate = async expression => { const result = await cdp('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text); return result.result.value; };
   const wait = async (expression, attempts = 80) => { for (let i = 0; i < attempts; i++) { if (await evaluate(expression)) return; await pause(100); } throw new Error(`Timed out: ${expression}; DOM=${await evaluate('document.body?.innerText')}; exceptions=${JSON.stringify(failures)}; API=${calls.map(c=>c.path).join(',')}`); };
   const click = async label => { await wait(`Array.from(document.querySelectorAll('button')).some(b=>b.textContent.trim()===${JSON.stringify(label)}&&!b.disabled&&b.getClientRects().length)`); await evaluate(`(()=>{const b=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()===${JSON.stringify(label)}&&!b.disabled&&b.getClientRects().length);b.focus();b.click()})()`); await pause(160); };
@@ -104,7 +105,15 @@ try {
   await viewport(390, 844, true); await cdp('Page.navigate', { url: origin }); await wait(text('Fixture project'));
   await geometry('mobile initial navigation');
   await evaluate('window.scrollTo(0,document.body.scrollHeight)'); await geometry('mobile navigation after page scroll');
+  await evaluate('window.scrollTo(0,0)');
   await screenshot('mobile-home');
+  await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+  await wait("document.documentElement.dataset.theme==='light'");
+  assert.equal(await evaluate("getComputedStyle(document.documentElement).getPropertyValue('--text').trim()"), '#17243a');
+  await screenshot('mobile-home-light');
+  await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+  await wait("document.documentElement.dataset.theme==='dark'");
+  evidence.push({ check: 'light/dark system theme updates live without changing page state', passed: true });
   await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   const reduced = await evaluate("(()=>{const s=getComputedStyle(document.querySelector('.page.active')),b=getComputedStyle(document.querySelector('nav button'));return {animation:s.animationName,transition:b.transitionDuration}})()");
   assert.equal(reduced.animation, 'none'); assert.equal(reduced.transition, '0s');
@@ -207,6 +216,16 @@ try {
   assert.equal(await evaluate("Boolean(document.querySelector('nav'))"), false);
   assert.equal(await evaluate(text('Fixture project')), false);
   evidence.push({ check: 'a revoked or expired normal session (mock HTTP 401) removes protected dashboard content', passed: true });
+  revoked = false;
+  await cdp('Page.removeScriptToEvaluateOnNewDocument', { identifier: englishLocale.identifier });
+  for (const [locale, home] of [['en-US','Home'],['pt-BR','Início'],['es-ES','Inicio'],['zh-CN','主页'],['fr-FR','Accueil'],['hi-IN','होम']]) {
+    const injected = await cdp('Page.addScriptToEvaluateOnNewDocument', { source: `Object.defineProperty(navigator,'languages',{get:()=>[${JSON.stringify(locale)}]})` });
+    await cdp('Page.reload'); await wait(text('Fixture project'), 300);
+    assert.ok(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent.trim()===${JSON.stringify(home)})`), `Navigation language ${locale}`);
+    await viewport(320, 844, true); await geometry(`localized navigation ${locale} at 320px`);
+    await cdp('Page.removeScriptToEvaluateOnNewDocument', { identifier: injected.identifier });
+  }
+  evidence.push({ check: 'all six browser languages select localized navigation without translating project names', passed: true });
   const output = { passed: evidence.length, evidence, runtimeExceptions: failures, limitations: ['Mock API validates browser integration, not real backend authorization.', 'Resize/event dispatch are lifecycle equivalents; physical Telegram Android/Desktop keyboard and suspension remain manual.', 'No real OpenCode inference, physical OS suspension, or Cloudflare reconnect is asserted by this script.'] };
   assert.equal(failures.length, 0, `Runtime exceptions: ${JSON.stringify(failures)}`);
   await fs.writeFile(path.join(outputDirectory, 'evidence.json'), JSON.stringify(output, null, 2));
