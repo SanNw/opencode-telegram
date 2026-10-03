@@ -30,7 +30,7 @@ Actual application screenshots with **fictional test data**, not private convers
 
 ### Get started
 
-Choose **[native Windows (PowerShell, no WSL)](docs/windows-native.md)** or Linux/WSL below. Run OpenCode and the Bridge in the same environment. Do not share `node_modules` between Windows and WSL. The linked detailed guides are currently in Portuguese.
+Choose **[native Windows (PowerShell, no WSL)](docs/en/windows-native.md)** or Linux/WSL below. Run OpenCode and the Bridge in the same environment. Do not share `node_modules` between Windows and WSL.
 
 Requirements: **Node.js 22+, OpenCode, a Telegram bot and an HTTPS URL** pointing only to the Bridge. Your computer must remain powered on and connected.
 
@@ -53,7 +53,7 @@ npm start
 
 Forward your HTTPS URL to `http://localhost:8787`, configure the Mini App button in BotFather and open it inside Telegram. Pair using the one-time code printed in the Bridge terminal. Never expose the OpenCode or Vite ports.
 
-**[Detailed installation](docs/installation.md)** · [Security](SECURITY.md) · [Operations and backup](docs/release-readiness.md)
+**[Detailed installation](docs/en/installation.md)** · [Security](docs/en/security.md) · [Operations and backup](docs/en/operations.md)
 
 ### Beta boundaries
 
@@ -80,7 +80,7 @@ CHROME_BINARY=/path/to/chrome npm run test:browser
 
 Leve o OpenCode no bolso: converse com seus agentes, escolha modelos, acompanhe a atividade e revise os resultados pelo celular ou desktop. Tudo conectado à sua pasta de trabalho, sem publicar o servidor OpenCode na internet.
 
-Self-hosted · proprietário único · MIT · **beta**
+Hospedagem própria · proprietário único · MIT · **beta**
 
 ### Do pedido ao resultado
 
@@ -94,24 +94,49 @@ As capturas acima mostram os dois temas com **dados fictícios de teste**, sem c
 
 ### Instalação
 
-Escolha **[Windows nativo (PowerShell, sem WSL)](docs/windows-native.md)** ou Linux/WSL. OpenCode e Bridge devem rodar no mesmo ambiente; não reutilize `node_modules` entre Windows e WSL.
+Escolha **[Windows nativo (PowerShell, sem WSL)](docs/pt/windows-native.md)** ou Linux/WSL. OpenCode e Bridge devem rodar no mesmo ambiente; não reutilize `node_modules` entre Windows e WSL.
 
 Requisitos: **Node.js 22+, OpenCode, bot do Telegram e URL HTTPS** apontando somente para o Bridge. O computador precisa permanecer ligado e conectado.
 
-Execute os comandos de clonagem, instalação e inicialização da seção inglesa. Edite `.env`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_ID`, `TELEGRAM_MINI_APP_URL` e uma pasta autorizada em `OPENCODE_DIRECTORY`. Configure as credenciais correspondentes se o OpenCode exigir autenticação. **Nunca publique `.env`.**
+```bash
+git clone https://github.com/SanNw/opencode-telegram.git
+cd opencode-telegram
+npm ci
+cp .env.example .env
+```
+
+Edite `.env`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_ID`, `TELEGRAM_MINI_APP_URL` e uma pasta autorizada em `OPENCODE_DIRECTORY`. Configure as credenciais correspondentes se o OpenCode exigir autenticação. **Nunca publique `.env`.**
+
+```bash
+npm run build
+# Terminal 1
+opencode serve --hostname 127.0.0.1 --port 4096
+# Terminal 2, na pasta do repositório
+npm start
+```
 
 Encaminhe sua URL HTTPS para `http://localhost:8787`, configure o botão do Mini App no BotFather e abra pelo Telegram. Pareie com o código de uso único mostrado no terminal do Bridge. Não publique a porta do OpenCode nem a do Vite.
 
-**[Instalação detalhada](docs/installation.md)** · [Segurança](SECURITY.md) · [Operação e backup](docs/release-readiness.md)
+**[Instalação detalhada](docs/pt/installation.md)** · [Segurança](docs/pt/security.md) · [Operação e backup](docs/pt/operations.md)
 
 ### Limites da beta
 
 - Não é multiusuário. OpenCode e Bridge permanecem em loopback.
-- Skills/plugins são somente leitura no contrato testado; mudanças de MCP são runtime-only.
+- Skills/plugins são somente leitura no contrato testado; mudanças de MCP valem somente durante a execução.
 - A beta não é uma certificação de segurança. Aceitação física e revisão independente continuam necessárias.
-- Docker é opcional, validado apenas em Linux. Windows/macOS não são hosts de container validados.
+- Docker é opcional, validado apenas em Linux. Windows/macOS não são hosts de contêiner validados.
 
-Para desenvolvimento, use os comandos da seção inglesa. [Testes de navegador](docs/browser-validation.md) · [Aceitação Telegram](docs/telegram-acceptance.md) · [Especificação](PROJECT_SPEC.md) · [Licença MIT](LICENSE)
+### Desenvolvimento
+
+```bash
+npm run check
+npm test
+npm run build
+npm run test:runtime
+CHROME_BINARY=/caminho/para/chrome npm run test:browser
+```
+
+[Instalação](docs/pt/installation.md) · [Segurança](docs/pt/security.md) · [Operação e cópias de segurança](docs/pt/operations.md) · [Licença MIT — texto original em inglês](LICENSE)
 
 ## Español
 
@@ -133,15 +158,30 @@ Las capturas anteriores muestran ambos temas con **datos ficticios de prueba**, 
 
 ### Instalación
 
-Elige **[Windows nativo (PowerShell, sin WSL)](docs/windows-native.md)** o Linux/WSL. OpenCode y el Bridge deben ejecutarse en el mismo entorno; no compartas `node_modules` entre Windows y WSL. Las guías detalladas enlazadas están actualmente en portugués.
+Elige **[Windows nativo (PowerShell, sin WSL)](docs/es/windows-native.md)** o Linux/WSL. OpenCode y el Bridge deben ejecutarse en el mismo entorno; no compartas `node_modules` entre Windows y WSL.
 
 Requisitos: **Node.js 22+, OpenCode, un bot de Telegram y una URL HTTPS** que apunte únicamente al Bridge. El ordenador debe permanecer encendido y conectado.
 
-Ejecuta los comandos de clonación, instalación e inicio de la sección inglesa. Configura en `.env`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_ID`, `TELEGRAM_MINI_APP_URL` y una carpeta autorizada en `OPENCODE_DIRECTORY`. Añade las credenciales correspondientes si OpenCode requiere autenticación. **Nunca publiques `.env`.**
+```bash
+git clone https://github.com/SanNw/opencode-telegram.git
+cd opencode-telegram
+npm ci
+cp .env.example .env
+```
+
+Configura en `.env`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_ID`, `TELEGRAM_MINI_APP_URL` y una carpeta autorizada en `OPENCODE_DIRECTORY`. Añade las credenciales correspondientes si OpenCode requiere autenticación. **Nunca publiques `.env`.**
+
+```bash
+npm run build
+# Terminal 1
+opencode serve --hostname 127.0.0.1 --port 4096
+# Terminal 2, en la carpeta del repositorio
+npm start
+```
 
 Dirige tu URL HTTPS a `http://localhost:8787`, configura el botón del Mini App en BotFather y ábrelo dentro de Telegram. Vincula el dispositivo con el código de un solo uso mostrado en el terminal del Bridge. No expongas los puertos de OpenCode ni de Vite.
 
-**[Instalación detallada](docs/installation.md)** · [Seguridad](SECURITY.md) · [Operación y copias de seguridad](docs/release-readiness.md)
+**[Instalación detallada](docs/es/installation.md)** · [Seguridad](docs/es/security.md) · [Operación y copias de seguridad](docs/es/operations.md)
 
 ### Límites de la beta
 
@@ -150,4 +190,14 @@ Dirige tu URL HTTPS a `http://localhost:8787`, configura el botón del Mini App 
 - La beta no es una certificación de seguridad. Aún se requieren aceptación física y revisión independiente.
 - Docker es opcional y está validado solo en Linux. Los hosts de contenedores Windows/macOS no están validados.
 
-Para desarrollo, utiliza los comandos de la sección inglesa. [Pruebas de navegador](docs/browser-validation.md) · [Aceptación Telegram](docs/telegram-acceptance.md) · [Especificación](PROJECT_SPEC.md) · [Licencia MIT](LICENSE)
+### Desarrollo
+
+```bash
+npm run check
+npm test
+npm run build
+npm run test:runtime
+CHROME_BINARY=/ruta/a/chrome npm run test:browser
+```
+
+[Instalación](docs/es/installation.md) · [Seguridad](docs/es/security.md) · [Operación y copias de seguridad](docs/es/operations.md) · [Licencia MIT — texto original en inglés](LICENSE)
