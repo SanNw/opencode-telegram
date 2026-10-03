@@ -1,4 +1,4 @@
-// Run with Windows Node 22+: node deploy/verify-mini-app-browser.mjs
+// Node 22+: CHROME_BINARY=/absolute/path/to/chrome npm run test:browser
 // Real Chromium, built assets, isolated mock API. Never contacts production.
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -10,8 +10,17 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'apps/mini-app/dist');
-const chrome = process.env.CHROME_BINARY || 'C:\\Users\\San\\AppData\\Local\\ms-playwright\\chromium_headless_shell-1234\\chrome-headless-shell-win64\\chrome-headless-shell.exe';
-let revoked = false, configured = false, privileged = false;
+const chrome = process.env.CHROME_BINARY || process.argv[2];
+assert.ok(chrome, 'Set CHROME_BINARY or pass an absolute Chromium executable path as the first argument');
+assert.equal(typeof WebSocket, 'function', 'Browser verification requires Node.js 22 or newer');
+await fs.access(chrome);
+await fs.access(path.join(dist, 'index.html'));
+const outputDirectory = path.join(root, 'test-results/browser');
+await fs.mkdir(outputDirectory, { recursive: true });
+await fs.rm(path.join(outputDirectory, 'evidence.json'), { force: true });
+await fs.rm(path.join(outputDirectory, 'failure.json'), { force: true });
+let revoked = false, configured = false, privileged = false, privilegedExpiresAt = 0, clockOffset = 0;
+const fixtureNow = () => Math.floor((Date.now() + clockOffset) / 1000);
 const calls = [], failures = [], evidence = [];
 const artifact = { id: `att_${'a'.repeat(32)}`, name: 'browser-proof.md', mime: 'text/markdown', size: 30, preview: 'text', sessionId: 's1', createdAt: 1, category: 'documents' };
 const server = http.createServer(async (req, res) => {
@@ -40,8 +49,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.endsWith('/artifacts')) return json({ artifacts: url.searchParams.get('category') === 'images' ? [] : [artifact] });
     if (url.pathname.includes('/attachments/')) { res.writeHead(200, { 'content-type': 'text/markdown' }); return res.end('# Isolated browser artifact'); }
     if (url.pathname.endsWith('/security/recovery/setup')) { configured = true; return json({ recoveryKey: 'rk_BROWSER_FIXTURE_NOT_A_REAL_SECRET' }); }
-    if (url.pathname.endsWith('/security/step-up')) { privileged = true; return json({ expiresAt: Date.now() + 300000 }); }
-    if (url.pathname.endsWith('/security/lock')) { revoked = true; return json({ recoveryConfigured: configured, locked: true, telegramCompromised: false }); }
+    if (url.pathname.endsWith('/security/step-up')) { privileged = true; privilegedExpiresAt = fixtureNow() + 300; return json({ expiresAt: privilegedExpiresAt }); }
+    if (url.pathname.endsWith('/security/lock')) { if (!privileged || privilegedExpiresAt <= fixtureNow()) return json({}, 403); revoked = true; return json({ recoveryConfigured: configured, locked: true, telegramCompromised: false }); }
     if (url.pathname.endsWith('/security/recovery/unlock')) { revoked = false; return json({ deviceId: 'recovered-browser-fixture' }); }
     if (url.pathname.endsWith('/security')) return json({ recoveryConfigured: configured, locked: revoked, telegramCompromised: false });
     return json({});
@@ -59,16 +68,23 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'opencode-browser-proof-'));
 const browser = spawn(chrome, ['--headless', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
 let stderr = ''; browser.stderr.on('data', chunk => { stderr += chunk; });
+browser.on('error', error => { stderr += error.message; });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-let socket;
+let socket, captureFailure;
 try {
   for (let i = 0; i < 100 && !stderr.includes('DevTools listening on'); i++) await pause(100);
   const wsURL = stderr.match(/DevTools listening on (ws:\/\/[^\s]+)/)?.[1];
   assert.ok(wsURL, `Browser startup failed: ${stderr.slice(-500)}`);
   socket = new WebSocket(wsURL); await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
   let seq = 0; const pending = new Map();
-  socket.onmessage = event => { const data = JSON.parse(event.data); if (data.id) { const p = pending.get(data.id); pending.delete(data.id); data.error ? p?.reject(new Error(data.error.message)) : p?.resolve(data.result); } if (data.method === 'Runtime.exceptionThrown') failures.push(data.params.exceptionDetails.exception?.description || data.params.exceptionDetails.text); };
-  const send = (method, params = {}, sessionId) => new Promise((resolve, reject) => { const id = ++seq; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) })); });
+  socket.onmessage = event => { const data = JSON.parse(event.data); if (data.id) { const p = pending.get(data.id); clearTimeout(p?.timer); pending.delete(data.id); data.error ? p?.reject(new Error(data.error.message)) : p?.resolve(data.result); } if (data.method === 'Runtime.exceptionThrown') failures.push(data.params.exceptionDetails.exception?.description || data.params.exceptionDetails.text); };
+  socket.onclose = () => { for (const p of pending.values()) { clearTimeout(p.timer); p.reject(new Error('Browser connection closed')); } pending.clear(); };
+  const send = (method, params = {}, sessionId) => new Promise((resolve, reject) => {
+    const id = ++seq;
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error(`Browser command timed out: ${method}`)); }, 30000);
+    pending.set(id, { resolve, reject, timer });
+    socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+  });
   const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
   const cdp = (method, params) => send(method, params, sessionId);
@@ -79,7 +95,8 @@ try {
   const click = async label => { await wait(`Array.from(document.querySelectorAll('button')).some(b=>b.textContent.trim()===${JSON.stringify(label)}&&!b.disabled&&b.getClientRects().length)`); await evaluate(`(()=>{const b=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()===${JSON.stringify(label)}&&!b.disabled&&b.getClientRects().length);b.focus();b.click()})()`); await pause(160); };
   const viewport = async (width, height, mobile) => { await cdp('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }); await pause(160); };
   const text = text => `Boolean(document.body?.innerText.includes(${JSON.stringify(text)}))`;
-  const screenshot = async name => { const { data } = await cdp('Page.captureScreenshot', { format: 'png' }); const filename = path.join(root, '.superpowers/sdd/remaining-cycles-plan', `browser-${name}.png`); await fs.writeFile(filename, Buffer.from(data, 'base64')); };
+  const screenshot = async name => { const { data } = await cdp('Page.captureScreenshot', { format: 'png' }); await fs.writeFile(path.join(outputDirectory, `browser-${name}.png`), Buffer.from(data, 'base64')); };
+  captureFailure = () => screenshot('failure');
   const geometry = async name => { await wait("Array.from(document.querySelectorAll('nav')).some(n=>getComputedStyle(n).display!=='none')"); const value = await evaluate(`(()=>{const n=Array.from(document.querySelectorAll('nav')).find(n=>getComputedStyle(n).display!=='none');const r=n.getBoundingClientRect();return {width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,navBottom:r.bottom,navTop:r.top,position:getComputedStyle(n).position}})()`); assert.ok(value.scrollWidth <= value.width + 1, `${name}: horizontal overflow ${JSON.stringify(value)}`); assert.ok(value.navBottom <= value.height + 1 && value.navTop >= 0, `${name}: nav outside viewport`); evidence.push({ check: name, ...value }); };
   await viewport(390, 844, true); await cdp('Page.navigate', { url: origin }); await wait(text('Fixture project'));
   await geometry('mobile initial navigation');
@@ -109,6 +126,20 @@ try {
   evidence.push({ check: 'native Recovery modal blocks pointer navigation behind one-time key', passed: true });
   await click('I saved my key'); assert.equal(await evaluate(text('rk_BROWSER_FIXTURE_NOT_A_REAL_SECRET')), false);
   await evaluate("document.getElementById('step-up-key').value='rk_BROWSER_FIXTURE_NOT_A_REAL_SECRET';document.getElementById('step-up-key').form.requestSubmit()"); await wait(text('Privileged session:')); assert.equal(await evaluate("document.getElementById('step-up-key').value"), ''); assert.ok(privileged); evidence.push({ check: 'one-time recovery display and cleared step-up input', passed: true });
+  assert.ok(privilegedExpiresAt - fixtureNow() <= 300 && privilegedExpiresAt - fixtureNow() > 295, 'Step-up fixture must use epoch seconds and a five-minute TTL');
+  assert.match(await evaluate("document.querySelector('.security-center [role=status]').innerText"), /Privileged session: (5:00|4:5[0-9]) remaining/);
+  // Advance the browser clock and the mock API clock together, not the host clock.
+  clockOffset = 310000;
+  await evaluate('window.fixtureNativeNow=Date.now;Date.now=()=>window.fixtureNativeNow()+310000');
+  await wait(text('Privileged session expired.'));
+  await click('Home'); await wait(text('Fixture project'));
+  await click('Settings'); await click('Security'); await click('Lock remote access'); await click('Confirm lock');
+  await wait(text('Step-up authentication required.'));
+  assert.equal(revoked, false, 'Expired privilege must not lock remote access');
+  evidence.push({ check: 'five-minute step-up expiry blocks a sensitive operation while ordinary navigation remains available (simulated clock)', passed: true });
+  clockOffset = 0;
+  await evaluate("Date.now=window.fixtureNativeNow;delete window.fixtureNativeNow;document.getElementById('step-up-key').value='rk_BROWSER_FIXTURE_NOT_A_REAL_SECRET';document.getElementById('step-up-key').form.requestSubmit()");
+  await wait(text('Privileged session:'));
   await viewport(390, 470, true); await geometry('mobile keyboard-equivalent viewport resize');
   await screenshot('mobile-keyboard-equivalent');
   await evaluate("window.dispatchEvent(new Event('online'));document.dispatchEvent(new Event('visibilitychange'))"); await pause(300); assert.ok(calls.filter(c => c.path.endsWith('/snapshot')).length >= 2); evidence.push({ check: 'online/visibility lifecycle refresh', passed: true });
@@ -117,10 +148,20 @@ try {
   await click('Settings'); await click('Security'); await click('Lock remote access'); await click('Confirm lock'); await wait(text('Remote access locked')); evidence.push({ check: 'lock revokes visible dashboard', passed: true });
   await evaluate("window.Telegram.WebApp.initData='';document.querySelector('.gate-recovery').open=true;document.getElementById('access-recovery-key').value='rk_BROWSER_FIXTURE_NOT_A_REAL_SECRET';document.getElementById('access-recovery-key').form.requestSubmit()");
   await wait(text('Fixture project'), 300); const recovery = calls.find(c => c.path.endsWith('/recovery/unlock')); assert.ok(recovery.body.proof && recovery.body.publicKey); assert.equal('initData' in recovery.body, false); assert.equal(await evaluate("JSON.stringify(localStorage).includes('rk_BROWSER_FIXTURE')"), false); evidence.push({ check: 'recovery signed with new P-256 key without Telegram initData', passed: true });
+  revoked = true;
+  await evaluate("window.dispatchEvent(new Event('online'))");
+  await wait(text('Access unavailable'));
+  assert.equal(await evaluate("Boolean(document.querySelector('nav'))"), false);
+  assert.equal(await evaluate(text('Fixture project')), false);
+  evidence.push({ check: 'a revoked or expired normal session (mock HTTP 401) removes protected dashboard content', passed: true });
   const output = { passed: evidence.length, evidence, runtimeExceptions: failures, limitations: ['Mock API validates browser integration, not real backend authorization.', 'Resize/event dispatch are lifecycle equivalents; physical Telegram Android/Desktop keyboard and suspension remain manual.', 'No real OpenCode inference, physical OS suspension, or Cloudflare reconnect is asserted by this script.'] };
   assert.equal(failures.length, 0, `Runtime exceptions: ${JSON.stringify(failures)}`);
-  const outputPath = path.join(root, '.superpowers/sdd/remaining-cycles-plan/task-5-browser-evidence.json'); await fs.writeFile(outputPath, JSON.stringify(output, null, 2));
+  await fs.writeFile(path.join(outputDirectory, 'evidence.json'), JSON.stringify(output, null, 2));
   console.log(JSON.stringify(output, null, 2));
+} catch (error) {
+  await captureFailure?.().catch(() => {});
+  await fs.writeFile(path.join(outputDirectory, 'failure.json'), JSON.stringify({ error: String(error), evidence, runtimeExceptions: failures }, null, 2));
+  throw error;
 } finally {
   socket?.close(); browser.kill(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
   // Only this script's newly-created disposable browser profile is removed.
