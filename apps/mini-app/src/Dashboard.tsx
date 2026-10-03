@@ -1,3 +1,5 @@
+import { t } from "./i18n.js"
+import { AppearanceSettings } from "./components/AppearanceSettings.js"
 import {
   useCallback,
   useEffect,
@@ -120,10 +122,10 @@ function Navigation({
 }) {
   const current = page === "conversation" ? "home" : page;
   const items = [
-    ["home", "Home"],
-    ["projects", "Projects"],
-    ["agents", "Agents"],
-    ["settings", "Settings"],
+    ["home", t("Home")],
+    ["projects", t("Projects")],
+    ["agents", t("Agents")],
+    ["settings", t("Settings")],
   ] as const;
   return (
     <nav className={className} aria-label="Main navigation">
@@ -625,11 +627,11 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
       })),
     ) ?? [];
   const capabilityValue = (name: string, value: string) => {
-    if (capabilityStatus === "loading") return "Loading…";
+    if (capabilityStatus === "loading") return t("Loading…");
     if (capabilityStatus === "error") return "Error";
     const capability = capabilities?.capabilities[name];
     if (capability?.status === "available") return value;
-    return capability?.status === "disabled" ? "Disabled" : "Unsupported";
+    return capability?.status === "disabled" ? t("Disabled") : "Unsupported";
   };
   const usageAvailable =
     capabilityStatus === "ready" &&
@@ -674,7 +676,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
         aria-hidden={!drawerOpen}
       >
         <div className="flex mb">
-          <strong className="grow">Sessions</strong>
+          <strong className="grow">{t("Sessions")}</strong>
           <button
             type="button"
             className="iconbtn"
@@ -693,24 +695,21 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
             setNewSessionOpen(true);
           }}
         >
-          <Icon name="plus" /> New session
-        </button>
-        <label className="sr-only" htmlFor="session-search">
-          Search sessions
-        </label>
+          <Icon name="plus" />{t("New session")}</button>
+        <label className="sr-only" htmlFor="session-search">{t("Search sessions")}</label>
         <input
           id="session-search"
           className="input"
           value={sessionSearch}
           onChange={(event) => setSessionSearch(event.target.value)}
-          placeholder="Search sessions"
+          placeholder={t("Search sessions")}
         />
         {visibleSessions.length === 0 && (
-          <p className="empty compact">No matching sessions.</p>
+          <p className="empty compact">{t("No matching sessions.")}</p>
         )}
         {todaySessions.length > 0 && (
           <>
-            <div className="sectionTitle muted">TODAY</div>
+            <div className="sectionTitle muted">{t("TODAY")}</div>
             <div className="drawer-sessions">
               {drawerSessions(todaySessions)}
             </div>
@@ -718,7 +717,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
         )}
         {earlierSessions.length > 0 && (
           <>
-            <div className="sectionTitle muted">EARLIER</div>
+            <div className="sectionTitle muted">{t("EARLIER")}</div>
             <div className="drawer-sessions">
               {drawerSessions(earlierSessions)}
             </div>
@@ -730,14 +729,12 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
         <main className={`main ${page === "conversation" ? "main--conversation" : ""}`}>
           {error && (
             <section className="notice" role="alert">
-              <span>OpenCode data is unavailable.</span>
+              <span>{t("OpenCode data is unavailable.")}</span>
               <button
                 className="btn"
                 type="button"
                 onClick={() => void load().catch(() => setError(true))}
-              >
-                Try again
-              </button>
+              >{t("Try again")}</button>
             </section>
           )}
           {actionError && (
@@ -746,16 +743,14 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
             </p>
           )}
           {!snapshot && !error && (
-            <p className="loading" role="status">
-              Loading workspace…
-            </p>
+            <p className="loading" role="status">{t("Loading workspace…")}</p>
           )}
           {snapshot && page === "home" && (
             <section className="page active" key="home">
               <div className="flex between mb">
                 <div className="grow">
-                  <div className="heading">Dashboard</div>
-                  <div className="small muted">Your OpenCode at a glance.</div>
+                  <div className="heading">{t("Dashboard")}</div>
+                  <div className="small muted">{t("Your OpenCode at a glance.")}</div>
                 </div>
                 <button
                   className="btn"
@@ -766,37 +761,37 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     openSession(workingSession ?? snapshot.sessions[0]!)
                   }
                 >
-                  {workingSession ? "Open working session" : "Open latest session"}
+                  {workingSession ? "Open working session" : t("Open latest session")}
                 </button>
               </div>
               <div className="grid4">
                 <div className="card">
-                  <div className="tiny muted">SESSIONS</div>
+                  <div className="tiny muted">{t("SESSIONS")}</div>
                   <div className="metric">{snapshot.sessions.length}</div>
                   <div className="tiny muted">{activeSessions} working</div>
                 </div>
                 <div className="card">
-                  <div className="tiny muted">AGENTS</div>
+                  <div className="tiny muted">{t("AGENTS")}</div>
                   <div className="metric">{availableSubagents.length}</div>
                   <div className="tiny muted">available subagents</div>
                 </div>
                 <div className="card">
-                  <div className="tiny muted">SESSION TOKENS</div>
+                  <div className="tiny muted">{t("SESSION TOKENS")}</div>
                   <div className="metric">
                     {capabilityValue("tokens", sessionTokens.toLocaleString())}
                   </div>
-                  <div className="tiny muted">reported by OpenCode</div>
+                  <div className="tiny muted">{t("reported by OpenCode")}</div>
                 </div>
                 <div className="card">
-                  <div className="tiny muted">SESSION COST</div>
+                  <div className="tiny muted">{t("SESSION COST")}</div>
                   <div className="metric">
                     {capabilityValue("costs", `$${sessionCost.toFixed(4)}`)}
                   </div>
-                  <div className="tiny muted">provider-reported total</div>
+                  <div className="tiny muted">{t("provider-reported total")}</div>
                 </div>
               </div>
               <div className="mt"><UsagePanel onUnauthorized={onUnauthorized} /></div>
-              <div className="sectionTitle">Projects</div>
+              <div className="sectionTitle">{t("Projects")}</div>
               <div className="grid2">
                 {snapshot.projects.slice(0, 2).map((project) => {
                   const sessions = sessionsForProject(snapshot.sessions, project.id);
@@ -835,19 +830,19 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                   );
                 })}
                 {snapshot.projects.length === 0 && (
-                  <div className="card empty">No projects are connected.</div>
+                  <div className="card empty">{t("No projects are connected.")}</div>
                 )}
               </div>
               <div className="grid2 mt">
                 <div className="card">
                   <div className="flex between">
-                    <strong>Usage</strong>
-                    <span className="tiny muted">Current sessions</span>
+                    <strong>{t("Usage")}</strong>
+                    <span className="tiny muted">{t("Current sessions")}</span>
                   </div>
                   {usageAvailable ? (
                     <div className="usage-values">
                       <div>
-                        <span>Input</span>
+                        <span>{t("Input")}</span>
                         <strong>
                           {snapshot.sessions
                             .reduce(
@@ -858,7 +853,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                         </strong>
                       </div>
                       <div>
-                        <span>Output</span>
+                        <span>{t("Output")}</span>
                         <strong>
                           {snapshot.sessions
                             .reduce(
@@ -869,7 +864,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                         </strong>
                       </div>
                       <div>
-                        <span>Reasoning</span>
+                        <span>{t("Reasoning")}</span>
                         <strong>
                           {snapshot.sessions
                             .reduce(
@@ -886,9 +881,9 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                   )}
                 </div>
                 <div className="card">
-                  <strong>Recent security activity</strong>
+                  <strong>{t("Recent security activity")}</strong>
                   {recentAudit.length === 0 && (
-                    <p className="empty compact">No recent activity.</p>
+                    <p className="empty compact">{t("No recent activity.")}</p>
                   )}
                   {recentAudit.map((item) => (
                     <div className="row" key={item.id}>
@@ -907,13 +902,11 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           )}
           {snapshot && page === "projects" && (
             <section className="page active" key="projects">
-              <div className="heading">Projects</div>
-              <div className="small muted mb">
-                OpenCode workspaces available on this installation.
-              </div>
+              <div className="heading">{t("Projects")}</div>
+              <div className="small muted mb">{t("OpenCode workspaces available on this installation.")}</div>
               <div className="card project-rows">
                 {snapshot.projects.length === 0 && (
-                  <p className="empty compact">No projects are connected.</p>
+                  <p className="empty compact">{t("No projects are connected.")}</p>
                 )}
                 {snapshot.projects.map((project) => {
                   const sessions = sessionsForProject(snapshot.sessions, project.id);
@@ -939,30 +932,26 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                         type="button"
                         disabled={!sessions[0]}
                         onClick={() => sessions[0] && openSession(sessions[0])}
-                      >
-                        Open
-                      </button>
+                      >{t("Open")}</button>
                     </div>
                   );
                 })}
               </div>
-              <div className="sectionTitle">Workspace</div>
-              <div className="tabs" aria-label="Workspace views">{(["overview", "git", "artifacts"] as const).map((tab) => <button className={`tab ${projectTab === tab ? "active" : ""}`} type="button" aria-pressed={projectTab === tab} key={tab} onClick={() => setProjectTab(tab)}>{tab === "overview" ? "Overview" : tab === "git" ? "Git" : "Artifacts"}</button>)}</div>
-              {projectTab === "overview" && <div className="card"><div className="row"><strong className="grow">{vcs?.branch ?? "Workspace"}</strong><span className="pill">{vcs?.files.length ?? "—"} changed</span></div><p className="small muted">Open Git to review changes or Artifacts to preview useful outputs from OpenCode.</p></div>}
+              <div className="sectionTitle">{t("Workspace")}</div>
+              <div className="tabs" aria-label="Workspace views">{(["overview", "git", "artifacts"] as const).map((tab) => <button className={`tab ${projectTab === tab ? "active" : ""}`} type="button" aria-pressed={projectTab === tab} key={tab} onClick={() => setProjectTab(tab)}>{tab === "overview" ? t("Overview") : tab === "git" ? "Git" : t("Artifacts")}</button>)}</div>
+              {projectTab === "overview" && <div className="card"><div className="row"><strong className="grow">{vcs?.branch ?? t("Workspace")}</strong><span className="pill">{vcs?.files.length ?? "—"} changed</span></div><p className="small muted">{t("Open Git to review changes or Artifacts to preview useful outputs from OpenCode.")}</p></div>}
               {projectTab === "git" && <GitPanel context={controlContext} />}
               {projectTab === "artifacts" && <ArtifactGallery context={controlContext} />}
             </section>
           )}
           {snapshot && page === "agents" && (
             <section className="page active" key="agents">
-              <div className="heading">Agents</div>
-              <div className="small muted mb">
-                Monitor models, activity and capability access.
-              </div>
+              <div className="heading">{t("Agents")}</div>
+              <div className="small muted mb">{t("Monitor models, activity and capability access.")}</div>
               <div className="card">
-                {!agentCatalog && <p className="loading">Loading agent catalog...</p>}
+                {!agentCatalog && <p className="loading">{t("Loading agent catalog...")}</p>}
                 {agentCatalog?.agents.length === 0 && (
-                  <p className="empty compact">No agents were reported by OpenCode.</p>
+                  <p className="empty compact">{t("No agents were reported by OpenCode.")}</p>
                 )}
                 {agentCatalog?.agents.map((agent) => (
                   <button
@@ -983,12 +972,10 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                   </button>
                 ))}
               </div>
-              <div className="sectionTitle">Recorded subagent sessions</div>
+              <div className="sectionTitle">{t("Recorded subagent sessions")}</div>
               <div className="card">
                 {childSessions.length === 0 && (
-                  <p className="empty compact">
-                    No subagent sessions are active or recorded.
-                  </p>
+                  <p className="empty compact">{t("No subagent sessions are active or recorded.")}</p>
                 )}
                 {childSessions.map((session) => (
                   <button
@@ -1010,7 +997,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                   </button>
                 ))}
               </div>
-              <div className="sectionTitle">Selected agent</div>
+              <div className="sectionTitle">{t("Selected agent")}</div>
               {selectedAgent ? (
                 <div className="card">
                   <div className="flex between">
@@ -1020,21 +1007,21 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                         {selectedAgent.description ?? "No description provided."}
                       </div>
                     </div>
-                    <span className="pill">Configured</span>
+                    <span className="pill">{t("Configured")}</span>
                   </div>
                   <div className="grid2 mt">
                     <div className="soft">
-                      <strong className="tiny">TYPE</strong>
+                      <strong className="tiny">{t("TYPE")}</strong>
                       <div className="small mt muted">
                         {selectedAgent.mode} · {selectedAgent.native ? "native" : "custom"}
                       </div>
                     </div>
                     <div className="soft">
-                      <strong className="tiny">MODEL</strong>
+                      <strong className="tiny">{t("MODEL")}</strong>
                       <div className="small mt muted">
                         {selectedAgent.model
                           ? `${selectedAgent.model.providerId} / ${selectedAgent.model.id}`
-                          : "Session default"}
+                          : t("Session default")}
                       </div>
                     </div>
                   </div>
@@ -1054,25 +1041,23 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                 </div>
               ) : (
                 <div className="card empty-state compact">
-                  <strong>No agent selected</strong>
-                  <span>OpenCode did not expose an available agent.</span>
+                  <strong>{t("No agent selected")}</strong>
+                  <span>{t("OpenCode did not expose an available agent.")}</span>
                 </div>
               )}
             </section>
           )}
           {page === "settings" && (
             <section className="page active" key="settings">
-              <div className="heading">Settings</div>
-              <div className="small muted mb">
-                OpenCode, integrations and security.
-              </div>
+              <div className="heading">{t("Settings")}</div>
+              <div className="small muted mb">{t("OpenCode, integrations and security.")}</div>
               <div className="tabs">
                 {(
                   [
-                    ["integrations", "Integrations"],
-                    ["ai", "AI & Tools"],
-                    ["security", "Security"],
-                    ["storage", "Storage"],
+                    ["integrations", t("Integrations")],
+                    ["ai", t("AI & Tools")],
+                    ["security", t("Security")],
+                    ["storage", t("Storage")],
                   ] as const
                 ).map(([id, label]) => (
                   <button
@@ -1093,23 +1078,19 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                       <div className="brandmark">T</div>
                       <div className="grow">
                         <strong>Telegram</strong>
-                        <div className="tiny muted">
-                          Mini App authentication and secure remote access
-                        </div>
+                        <div className="tiny muted">{t("Mini App authentication and secure remote access")}</div>
                       </div>
-                      <span className="pill">Authenticated</span>
+                      <span className="pill">{t("Authenticated")}</span>
                     </div>
                     <div className="row">
                       <div className="brandmark">OC</div>
                       <div className="grow">
                         <strong>OpenCode</strong>
-                        <div className="tiny muted">
-                          Local server through the secure Bridge
-                        </div>
+                        <div className="tiny muted">{t("Local server through the secure Bridge")}</div>
                       </div>
                       <span className="pill">
                         <span className={online ? "dot" : "dot offline"} />
-                        {online ? "Connected" : "Offline"}
+                        {online ? t("Connected") : t("Offline")}
                       </span>
                     </div>
                   </div>
@@ -1117,12 +1098,13 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
               )}
               {settingsTab === "ai" && (
                 <div className="tabpane active">
+                  <AppearanceSettings />
                   <div className="card">
-                    <strong>Providers & Models</strong>
+                    <strong>{t("Providers & Models")}</strong>
                     <div className="small muted mt">{catalogSummary}</div>
                     <div className="provider-pills mt">{connectedProviders.map((provider) => <span className="pill" key={provider.id}><span className="dot" />{provider.name}</span>)}</div>
-                    <p className="small muted">Manage providers, Skills, MCP servers and plugins in Integrations. Capabilities and configuration limits come directly from OpenCode.</p>
-                    <button className="btn" type="button" onClick={() => setSettingsTab("integrations")}>Manage integrations</button>
+                    <p className="small muted">{t("Manage providers, Skills, MCP servers and plugins in Integrations. Capabilities and configuration limits come directly from OpenCode.")}</p>
+                    <button className="btn" type="button" onClick={() => setSettingsTab("integrations")}>{t("Manage integrations")}</button>
                   </div>
                 </div>
               )}
@@ -1131,25 +1113,25 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                   <SecurityCenter context={controlContext} requested={stepUpRequested} expiresAt={privilegedExpiresAt} onElevation={setPrivilegedExpiresAt} onLocked={onLocked}>
                   <div className="grid2">
                     <div className="card">
-                      <div className="tiny muted">APPROVAL POLICY</div>
-                      <div className="metric">Enforced</div>
+                      <div className="tiny muted">{t("APPROVAL POLICY")}</div>
+                      <div className="metric">{t("Enforced")}</div>
                       <div className="small muted">
                         Trusted device + explicit approval
                       </div>
                     </div>
                     <div className="card">
-                      <div className="tiny muted">NETWORK BINDING</div>
+                      <div className="tiny muted">{t("NETWORK BINDING")}</div>
                       <div className="metric">Loopback</div>
-                      <div className="small muted">Bridge and OpenCode remain local</div>
+                      <div className="small muted">{t("Bridge and OpenCode remain local")}</div>
                     </div>
                   </div>
-                  <div className="sectionTitle">Trusted devices</div>
+                  <div className="sectionTitle">{t("Trusted devices")}</div>
                   <div className="card">
                     {deviceError && (
                       <p className="conversation-error">{deviceError}</p>
                     )}
                     {!devices && !deviceError && (
-                      <p className="loading">Loading devices…</p>
+                      <p className="loading">{t("Loading devices…")}</p>
                     )}
                     {devices?.map((device) => (
                       <div className="row" key={device.id}>
@@ -1165,20 +1147,18 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                           </div>
                         </div>
                         {device.current ? (
-                          <span className="pill">Current</span>
+                          <span className="pill">{t("Current")}</span>
                         ) : (
                           <button
                             className="btn danger"
                             type="button"
                             onClick={() => setRevokeTarget(device)}
-                          >
-                            Revoke
-                          </button>
+                          >{t("Revoke")}</button>
                         )}
                       </div>
                     ))}
                   </div>
-                  <div className="sectionTitle">Recent security events</div>
+                  <div className="sectionTitle">{t("Recent security events")}</div>
                   <div className="card">
                     {auditEvents?.slice(0, 8).map((event) => (
                       <div className="row" key={event.id}>
@@ -1204,13 +1184,13 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                 <div className="tabpane active">
                   <CachePanel onUnauthorized={onUnauthorized} />
                   {capabilityStatus === "loading" ? (
-                    <div className="card"><p className="loading">Loading storage capability…</p></div>
+                    <div className="card"><p className="loading">{t("Loading storage capability…")}</p></div>
                   ) : capabilityStatus === "error" ? (
-                    <div className="card"><div className="empty-state"><strong>Storage status unavailable</strong><span>The Bridge capability could not be loaded.</span></div></div>
+                    <div className="card"><div className="empty-state"><strong>{t("Storage status unavailable")}</strong><span>{t("The Bridge capability could not be loaded.")}</span></div></div>
                   ) : capabilities?.capabilities.storage?.status === "available" ? (
                     <div className="card storage-card"><StorageBrowser onUnauthorized={onUnauthorized} /></div>
                   ) : (
-                    <div className="card"><div className="empty-state"><strong>Secure workspace browsing is disabled</strong><span>{capabilities?.capabilities.storage?.reason ?? "The Bridge has not enabled opaque directory access."}</span></div></div>
+                    <div className="card"><div className="empty-state"><strong>{t("Secure workspace browsing is disabled")}</strong><span>{capabilities?.capabilities.storage?.reason ?? "The Bridge has not enabled opaque directory access."}</span></div></div>
                   )}
                 </div>
               )}
@@ -1241,29 +1221,22 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           aria-modal="true"
           aria-labelledby="revoke-device-title"
         >
-          <small>SECURITY CONFIRMATION</small>
+          <small>{t("SECURITY CONFIRMATION")}</small>
           <h2 id="revoke-device-title">Revoke {revokeTarget.label}?</h2>
-          <blockquote>
-            This device will immediately lose access and its active Bridge
-            sessions will end.
-          </blockquote>
+          <blockquote>{t("This device will immediately lose access and its active Bridge sessions will end.")}</blockquote>
           <div>
             <button
               type="button"
               autoFocus
               disabled={revoking}
               onClick={() => setRevokeTarget(undefined)}
-            >
-              Cancel
-            </button>
+            >{t("Cancel")}</button>
             <button
               className="danger-button"
               type="button"
               disabled={revoking}
               onClick={() => void revokeDevice()}
-            >
-              Revoke device
-            </button>
+            >{t("Revoke device")}</button>
           </div>
         </section>
       )}
@@ -1274,14 +1247,13 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           aria-modal="true"
           aria-labelledby="new-session-title"
         >
-          <small>NEW OPENCODE SESSION</small>
-          <h2 id="new-session-title">Create a session?</h2>
+          <small>{t("NEW OPENCODE SESSION")}</small>
+          <h2 id="new-session-title">{t("Create a session?")}</h2>
           <form
             className="session-form"
             onSubmit={(event) => void proposeSession(event)}
           >
-            <label htmlFor="session-title">
-              Title <span>(optional)</span>
+            <label htmlFor="session-title">{t("Title")}<span>(optional)</span>
             </label>
             <input
               id="session-title"
@@ -1299,12 +1271,8 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                 setNewSessionOpen(false);
                 setNewSessionAgent("");
               }}
-              >
-                Cancel
-              </button>
-              <button className="primary" type="submit" disabled={acting}>
-                Review
-              </button>
+              >{t("Cancel")}</button>
+              <button className="primary" type="submit" disabled={acting}>{t("Review")}</button>
             </div>
           </form>
         </section>
@@ -1316,8 +1284,8 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           aria-modal="true"
           aria-labelledby="confirm-session-title"
         >
-          <small>PERMISSION REQUIRED</small>
-          <h2 id="confirm-session-title">Create this OpenCode session?</h2>
+          <small>{t("PERMISSION REQUIRED")}</small>
+          <h2 id="confirm-session-title">{t("Create this OpenCode session?")}</h2>
           <blockquote>
             <span>{createProposal.title ?? "Untitled session in the configured workspace"}</span>
             {createProposal.agent && (
@@ -1330,17 +1298,13 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
               autoFocus
               disabled={acting}
               onClick={() => void decideSession("deny")}
-            >
-              Deny
-            </button>
+            >{t("Deny")}</button>
             <button
               className="primary"
               type="button"
               disabled={acting}
               onClick={() => void decideSession("approve")}
-            >
-              Create
-            </button>
+            >{t("Create")}</button>
           </div>
         </section>
       )}
@@ -1351,29 +1315,22 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           aria-modal="true"
           aria-labelledby="delete-session-title"
         >
-          <small>DELETE SESSION</small>
+          <small>{t("DELETE SESSION")}</small>
           <h2 id="delete-session-title">Delete {deleteTarget.title}?</h2>
-          <blockquote>
-            This permanently deletes the OpenCode session and its conversation
-            history. This action cannot be undone.
-          </blockquote>
+          <blockquote>{t("This permanently deletes the OpenCode session and its conversation history. This action cannot be undone.")}</blockquote>
           <div>
             <button
               type="button"
               autoFocus
               disabled={acting}
               onClick={() => setDeleteTarget(undefined)}
-            >
-              Cancel
-            </button>
+            >{t("Cancel")}</button>
             <button
               className="danger-button"
               type="button"
               disabled={acting}
               onClick={() => void proposeDelete()}
-            >
-              Review deletion
-            </button>
+            >{t("Review deletion")}</button>
           </div>
         </section>
       )}
@@ -1384,8 +1341,8 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           aria-modal="true"
           aria-labelledby="confirm-delete-title"
         >
-          <small>PERMISSION REQUIRED</small>
-          <h2 id="confirm-delete-title">Permanently delete this session?</h2>
+          <small>{t("PERMISSION REQUIRED")}</small>
+          <h2 id="confirm-delete-title">{t("Permanently delete this session?")}</h2>
           <blockquote>{deleteProposal.session.title}</blockquote>
           <div>
             <button
@@ -1393,17 +1350,13 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
               autoFocus
               disabled={acting}
               onClick={() => void decideDelete("deny")}
-            >
-              Deny
-            </button>
+            >{t("Deny")}</button>
             <button
               className="danger-button"
               type="button"
               disabled={acting}
               onClick={() => void decideDelete("approve")}
-            >
-              Delete session
-            </button>
+            >{t("Delete session")}</button>
           </div>
         </section>
       )}

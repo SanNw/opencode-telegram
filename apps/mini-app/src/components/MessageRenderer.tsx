@@ -1,3 +1,4 @@
+import { t } from "../i18n.js"
 import { CodeBlock } from "./CodeBlock.js"
 import { DiffViewer } from "./DiffViewer.js"
 import { Icon } from "./Icon.js"
@@ -26,7 +27,7 @@ export function MessageRenderer({ parts, onOpenFile, onOpenDiff }: MessageRender
     if (part.type === "status") return <p className={`message-status message-status--${part.tone ?? "neutral"}`} role={part.tone === "error" ? "alert" : "status"} key={key}>{part.content}</p>
     if (part.type === "file") return <button className="file-attachment" type="button" disabled={!onOpenFile} onClick={() => onOpenFile?.(part.fileId)} key={key}><Icon name="file" /><span><strong>{part.name}</strong><small>{part.mime ?? part.path}{part.size !== undefined ? ` · ${part.size.toLocaleString()} bytes` : ""}</small></span></button>
     const src = attachmentSource(part.attachmentId)
-    if (!src) return <div className="image-attachment image-attachment--unavailable" key={key}>Image preview unavailable</div>
+    if (!src) return <div className="image-attachment image-attachment--unavailable" key={key}>{t("Image preview unavailable")}</div>
     return <a className="image-attachment" href={src} target="_blank" rel="noopener noreferrer" key={key}><img src={src} alt={part.alt ?? part.name ?? "Attached image"} loading="lazy" /></a>
   })}</div>
 }
@@ -48,6 +49,6 @@ export function ChatMessageView({ message, locale, onOpenFile, onOpenDiff }: Cha
   const status = message.status ?? "completed"
   return <article className={`chat-message chat-message--${message.role} chat-message--${status}`} data-message-id={message.id} aria-label={`${message.role} message${time ? ` at ${time}` : ""}`}>
     <div className="chat-message__content"><MessageRenderer parts={visibleParts} onOpenFile={onOpenFile} onOpenDiff={onOpenDiff} /></div>
-    <footer className="chat-message__meta">{time && <time dateTime={new Date(message.createdAt).toISOString()}>{time}</time>}<span className="chat-message__state">{status === "sending" ? "Sending" : status === "streaming" ? "Streaming" : status === "failed" ? "Failed" : ""}</span></footer>
+    <footer className="chat-message__meta">{time && <time dateTime={new Date(message.createdAt).toISOString()}>{time}</time>}<span className="chat-message__state">{status === "sending" ? t("Sending") : status === "streaming" ? t("Streaming") : status === "failed" ? t("Failed") : ""}</span></footer>
   </article>
 }

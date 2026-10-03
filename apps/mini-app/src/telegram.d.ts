@@ -12,6 +12,8 @@ interface TelegramWebApp {
   SecureStorage?: TelegramSecureStorage
   ready(): void
   expand(): void
+  setHeaderColor?(color: string): void
+  setBackgroundColor?(color: string): void
   close(): void
 }
 

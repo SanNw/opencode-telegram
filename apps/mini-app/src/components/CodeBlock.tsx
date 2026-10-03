@@ -1,3 +1,4 @@
+import { t } from "../i18n.js"
 import { useState } from "react"
 
 export type CodeBlockProps = {
@@ -22,7 +23,7 @@ export function CodeBlock({ content, language, filename }: CodeBlockProps) {
     <figcaption className="code-block__header">
       <span className="code-block__label">{filename ?? language ?? "Code"}</span>
       <button className="code-block__copy" type="button" onClick={() => void copy()} aria-label={copied ? "Code copied" : "Copy code"}>
-        {copied ? "Copied" : "Copy"}
+        {copied ? t("Copied") : t("Copy")}
       </button>
     </figcaption>
     <pre tabIndex={0}><code className={language ? `language-${language}` : undefined}>{content}</code></pre>
