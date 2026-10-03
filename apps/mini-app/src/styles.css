@@ -65,9 +65,47 @@ button,a.btn,select,input,textarea,summary{transition:background-color var(--mot
 @keyframes surface-enter{from{opacity:0}to{opacity:1}}
 @keyframes panel-enter{from{opacity:0;translate:0 6px}to{opacity:1;translate:0 0}}
 
+/* Model selector: only the catalog scrolls; selection remains conversation-owned. */
+.chat{position:relative}
+.model-menu{width:min(360px,calc(100% - 16px));right:8px;top:52px;max-width:100%;max-height:min(480px,calc(100dvh - 140px));padding:10px;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:hidden;margin-bottom:0;opacity:1;translate:0 0;animation:none;transition:opacity var(--motion-exit) ease,translate var(--motion-enter) var(--motion-ease),display var(--motion-exit) allow-discrete}
+.model-menu[hidden]{display:none;opacity:0;translate:0 6px}
+@starting-style{.model-menu:not([hidden]){opacity:0;translate:0 6px}}
+.model-menu__header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;padding-bottom:8px;font-size:14px}
+.model-menu__header strong{min-width:0;overflow-wrap:anywhere}
+.model-menu__search{display:block;flex:none;padding:2px 2px 10px}
+.model-menu .model-options{display:block;min-height:0;margin:0;padding:3px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.model-menu .model-group{min-width:0;max-width:100%}
+.model-group h3{margin:10px 6px 5px;font-size:10px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);overflow-wrap:anywhere}
+.model-menu .model-option{min-height:56px;max-width:100%;padding:7px 9px;cursor:pointer;font-weight:500;gap:8px}
+.model-option__text{display:grid;gap:4px;flex:1;min-width:0;max-width:100%}
+.model-option__name,.model-option__text small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.model-option__name{font-size:13px;color:var(--text)}
+.model-option__text small{font-size:11px;font-weight:400;color:var(--muted)}
+.model-option>.ui-icon{width:16px;height:16px;color:var(--accent)}
+.model-menu__empty{margin:10px 6px;overflow-wrap:anywhere}
+.integration-manager{margin-bottom:18px}
+.mcp-panel__heading,.mcp-server__heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mcp-server-list{display:grid;gap:12px;margin-top:16px}
+.mcp-server{min-width:0;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--panel);display:grid;gap:8px}
+.mcp-server__heading strong{min-width:0;flex:1;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.mcp-server__heading .pill{flex:none;font-size:10px}
+.mcp-server p{margin:0;line-height:1.5}
+.mcp-server .control-actions{margin-top:4px;padding-top:10px;border-top:1px solid var(--border);gap:8px}
+.mcp-server .btn{font-size:12px;font-weight:500;padding-inline:11px}
+@media(max-width:380px){.mcp-server{padding:12px}.mcp-server .control-actions .btn{flex:1 1 auto}}
+@media(max-width:700px){.model-menu{right:8px;top:46px}}
+
 /* Containment and spacing fixes without changing the established page grid. */
 .card,.soft,.grid2>*,.grid4>*,.conversation-content,.tabpane{min-width:0}
 .conversation-page>.chat,.conversation-page>.chat>*{min-width:0}
+.chat-message,.chat-message__content,.message-parts,.message-parts>*,.markdown{min-width:0}
+.chat-message__content,.message-parts,.message-parts>*{max-width:100%;overflow-wrap:anywhere}
+.message-parts{grid-template-columns:minmax(0,1fr)}
+.markdown>pre{min-width:0;max-width:100%;margin:9px 0;white-space:normal}
+.markdown>pre>.code-block{margin:0}
+.markdown :is(p,li,a,code,th,td){overflow-wrap:anywhere}
+.code-block__header{gap:8px;white-space:normal}
+.code-block__copy{flex:none}
 .chathead .grow{overflow:hidden}
 .chathead .grow strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .control-surface,.project-switch{animation:surface-enter var(--motion-enter) ease-out}

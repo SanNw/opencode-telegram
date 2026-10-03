@@ -30,14 +30,17 @@ const server = http.createServer(async (req, res) => {
     const body = raw ? JSON.parse(raw) : undefined;
     calls.push({ path: url.pathname, method: req.method, body });
     if (url.pathname.endsWith('/events')) { res.writeHead(200, { 'content-type': 'text/event-stream' }); res.write(': mock connected\n\n'); return; }
-    const json = (data, status = 200) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
+    const json = (data, status = 200) => {
+      if (data.mutability) data.mcpServers = ['connected', 'needs_auth', 'disabled'].map((status, i) => ({ name: i === 0 ? 'Long-MCP-server-name-'.repeat(12) : `Fixture MCP ${i}`, status, enabled: status !== 'disabled', configType: 'local' }));
+      res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(data));
+    };
     if (revoked && !url.pathname.includes('/auth/') && !url.pathname.endsWith('/recovery/unlock')) return json({}, 401);
     if (url.pathname.endsWith('/auth/telegram')) return json({});
     if (url.pathname.endsWith('/snapshot')) return json({ online: true, version: 'browser-fixture', syncedAt: new Date().toISOString(), projects: [{ id: 'p1', name: 'Fixture project', worktree: '/mock', updatedAt: Date.now() }], sessions: [{ id: 's1', projectId: 'p1', title: 'Long browser conversation', directory: '/mock', updatedAt: Date.now() }], statuses: { s1: 'idle' } });
-    if (url.pathname.endsWith('/sessions/s1/messages')) return json({ messages: [{ id: 'm1', role: 'assistant', createdAt: Date.now(), completedAt: Date.now(), text: Array.from({ length: 140 }, (_, i) => `Paragraph ${i + 1}: long-response browser fixture with **Markdown** and operational text.`).join('\n\n') }], permissions: [], todos: [] });
+    if (url.pathname.endsWith('/sessions/s1/messages')) return json({ messages: [{ id: 'm1', role: 'assistant', createdAt: Date.now(), completedAt: Date.now(), text: 'Long token: ' + 'verylongtoken'.repeat(40) + '\n\n```js\nconst longLine = "' + 'code'.repeat(120) + '";\n```\n\n| Column | Value |\n| --- | --- |\n| Long cell | ' + 'table'.repeat(80) + ' |\n\n' + Array.from({ length: 140 }, (_, i) => `Paragraph ${i + 1}: long-response browser fixture with **Markdown** and operational text.`).join('\n\n') }], permissions: [], todos: [] });
     if (url.pathname.endsWith('/sessions/s1/diff')) return json({ files: [] });
     if (url.pathname.endsWith('/capabilities')) return json({ version: 1, capabilities: {} });
-    if (url.pathname.endsWith('/catalog')) return json({ providers: [], skills: [], plugins: [], mcpServers: [] });
+    if (url.pathname.endsWith('/catalog')) return json({ providers: ['Local fixture', 'Router fixture'].map((name, provider) => ({ id: `provider-${provider}`, name, connected: true, models: Array.from({ length: 10 }, (_, i) => ({ id: `model-${i}`, name: i === 0 ? 'Very long model name '.repeat(15) : `Fixture Model ${i}`, status: 'active', limits: { context: 4096, output: 1024 }, variants: ['low', 'medium', 'high'] })) })), skills: [], plugins: [], mcpServers: [] });
     if (url.pathname.endsWith('/agents')) return json({ agents: [] });
     if (url.pathname.endsWith('/devices')) return json({ devices: [] });
     if (url.pathname.endsWith('/audit')) return json({ events: [] });
@@ -118,14 +121,51 @@ try {
   await click('Images'); await wait(text('No images yet')); evidence.push({ check: 'artifact preview, modal Tab containment/focus restore, empty filter', passed: true });
   await click('Git'); await wait(text('Upstream: origin/main')); evidence.push({ check: 'Git metadata and diff', passed: true });
   await click('Open'); await wait(text('Paragraph 140:')); await viewport(390, 470, true);
+  const openModels = async () => { await evaluate("document.querySelector('[aria-label=\"Choose model\"]').click()"); await wait("!document.getElementById('model-selector').hidden"); await pause(240); };
+  await openModels();
+  assert.equal(await evaluate("document.activeElement.type"), 'search');
+  const searchModels = async value => { await evaluate(`(()=>{const e=document.querySelector('.model-menu input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(value)});e.dispatchEvent(new Event('input',{bubbles:true}))})()`); await pause(100); };
+  await searchModels('ROUTER FIXTURE'); assert.equal(await evaluate("document.querySelectorAll('.model-option').length"), 10);
+  await searchModels('not-a-model'); assert.ok(await evaluate(text('No models found.')));
+  await searchModels('');
+  for (let i = 0; i < 20; i++) {
+    await evaluate(`document.querySelectorAll('.model-option')[${i}].click()`); await wait("document.getElementById('model-selector').hidden");
+    await openModels(); assert.equal(await evaluate(`document.querySelectorAll('.model-option')[${i}].getAttribute('aria-pressed')`), 'true');
+  }
+  for (const width of [320, 390, 700, 1280]) {
+    await viewport(width, 700, width <= 700);
+    const menu = await evaluate("(()=>{const m=document.querySelector('.model-menu'),l=m.querySelector('.model-options'),h=m.querySelector('.model-menu__header'),r=m.getBoundingClientRect(),before=h.getBoundingClientRect().top;l.scrollTop=1000;return {left:r.left,right:r.right,width:innerWidth,client:m.clientWidth,scroll:m.scrollWidth,listClient:l.clientWidth,listScroll:l.scrollWidth,scrolls:l.scrollHeight>l.clientHeight,headerFixed:before===h.getBoundingClientRect().top}})()");
+    assert.ok(menu.left>=0 && menu.right<=menu.width && menu.scroll<=menu.client && menu.listScroll<=menu.listClient && menu.scrolls && menu.headerFixed, JSON.stringify(menu));
+  }
+  await evaluate("document.querySelector('[aria-label=\"Close model selector\"]').click()"); await wait("document.getElementById('model-selector').hidden");
+  await openModels(); await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }); await wait("document.getElementById('model-selector').hidden");
+  assert.equal(await evaluate("document.activeElement.getAttribute('aria-label')"), 'Choose model');
+  await openModels(); await evaluate("document.querySelector('.tabs').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}))"); await wait("document.getElementById('model-selector').hidden");
+  evidence.push({ check: 'model selector: search, all 20 models selectable, active indicator, fixed header, narrow layouts, X, Escape and outside dismissal', passed: true });
+  await viewport(390, 470, true);
   await evaluate("document.getElementById('prompt').focus()");
   const chatGeometry = await evaluate("(()=>{const c=document.querySelector('.composer').getBoundingClientRect(),s=document.querySelector('.conversation-stream');return {composerBottom:c.bottom,height:innerHeight,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,documentWidth:document.documentElement.scrollWidth,width:innerWidth}})()");
   assert.ok(chatGeometry.composerBottom <= chatGeometry.height + 1); assert.ok(chatGeometry.scrollHeight > chatGeometry.clientHeight); assert.ok(chatGeometry.documentWidth <= chatGeometry.width + 1); evidence.push({ check: 'long response independently scrolls; composer visible after keyboard-equivalent resize', ...chatGeometry }); await screenshot('mobile-chat-keyboard-equivalent');
   const chatBounds = await evaluate("Array.from(document.querySelectorAll('.chathead,.composer,.conversation-pills,.tabs')).map(e=>{const r=e.getBoundingClientRect();return {name:e.className,left:r.left,right:r.right}})");
   assert.ok(chatBounds.every(r=>r.left>=0 && r.right<=390), `Chat content clipped: ${JSON.stringify(chatBounds)}`);
   evidence.push({ check: 'chat header, chips, tabs and composer fit inside mobile viewport', passed: true });
+  for (const width of [320, 390, 700, 1280]) {
+    await viewport(width, 700, width <= 700);
+    const bounds = await evaluate("(()=>{const s=document.querySelector('.conversation-stream');return {width:s.clientWidth,scrollWidth:s.scrollWidth,parts:Array.from(s.querySelectorAll('.message-parts>*,.code-block')).map(e=>{const r=e.getBoundingClientRect(),p=s.getBoundingClientRect();return {left:r.left-p.left,right:r.right-p.left}})}})()");
+    assert.ok(bounds.scrollWidth <= bounds.width + 1, `Message overflow at ${width}px: ${JSON.stringify(bounds)}`);
+    assert.ok(bounds.parts.every(p=>p.left >= -1 && p.right <= bounds.width + 1), `Message part escaped at ${width}px`);
+    evidence.push({ check: `long token, fenced code and Markdown table stay inside chat at ${width}px`, passed: true });
+  }
   await evaluate("document.querySelector('[aria-label=\"Back to dashboard\"]').click()"); await viewport(390, 844, true);
-  await click('Settings'); await click('Integrations'); await wait(text('Official API fixture')); await click('Connect');
+  await click('Settings'); await click('Integrations'); await wait(text('Official API fixture'));
+  for (const width of [320, 390, 1280]) {
+    await viewport(width, 844, width <= 700);
+    const layout = await evaluate("(()=>{const m=document.querySelector('.integration-manager'),next=m.nextElementSibling;return {width:innerWidth,scroll:document.documentElement.scrollWidth,gap:next.getBoundingClientRect().top-m.getBoundingClientRect().bottom,servers:m.querySelectorAll('.mcp-server').length}})()");
+    assert.ok(layout.scroll<=layout.width+1 && layout.gap>=18 && layout.servers===3, JSON.stringify(layout));
+  }
+  await screenshot('integrations-mcp');
+  evidence.push({ check: 'MCP cards with long names fit mobile/desktop and Plugins stays separated from Telegram/OpenCode', passed: true });
+  await viewport(390, 844, true); await click('Connect');
   await evaluate("document.getElementById('provider-key').value='must-not-cross-providers';Array.from(document.querySelectorAll('.management-row')).find(r=>r.innerText.includes('Fixture Provider')).querySelector('button').click()");
   await wait(text('API key for Fixture Provider')); assert.equal(await evaluate("document.getElementById('provider-key').value"), '');
   await evaluate("Array.from(document.querySelectorAll('.management-row')).find(r=>r.innerText.includes('OpenAI')).querySelector('button').click()");

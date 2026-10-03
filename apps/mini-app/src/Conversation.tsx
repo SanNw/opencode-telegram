@@ -119,6 +119,8 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
   const [changes, setChanges] = useState<FileChange[]>([]), [proposal, setProposal] = useState<Proposal>()
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [working, setWorking] = useState(status !== "idle")
   const [activeTab, setActiveTab] = useState<ConversationTab>("chat"), [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [modelQuery, setModelQuery] = useState("")
+  const modelMenu = useRef<HTMLDivElement>(null), modelSearch = useRef<HTMLInputElement>(null), modelTrigger = useRef<HTMLButtonElement>(null)
   const [newMessages, setNewMessages] = useState(false)
   const [uploads, setUploads] = useState<PendingUpload[]>([]), [uploading, setUploading] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(session.agent ?? "")
@@ -142,6 +144,20 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
 
   useEffect(() => { void load().catch(() => setError("Conversation is unavailable.")) }, [connectionEpoch, load])
   useEffect(() => { setWorking(status !== "idle") }, [status])
+  useEffect(() => {
+    if (!modelMenuOpen) { setModelQuery(""); return }
+    modelSearch.current?.focus()
+    const closeOutside = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (!modelMenu.current?.contains(target) && !modelTrigger.current?.contains(target)) setModelMenuOpen(false)
+    }
+    const closeEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setModelMenuOpen(false); modelTrigger.current?.focus() }
+    }
+    document.addEventListener("pointerdown", closeOutside)
+    document.addEventListener("keydown", closeEscape)
+    return () => { document.removeEventListener("pointerdown", closeOutside); document.removeEventListener("keydown", closeEscape) }
+  }, [modelMenuOpen])
   useEffect(() => {
     const currentModel = availableModels.find(({ id, providerId }) => id === session.model?.id && providerId === session.model?.providerId)
     const currentAgent = initialAgent && availableAgents.some(({ name }) => name === initialAgent)
@@ -292,13 +308,22 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
 
   const model = selectedModel ? `${selectedModel.providerName} / ${selectedModel.name}` : session.model ? `${session.model.providerId} / ${session.model.id}` : "Model unavailable"
   const effortVariants = selectedModel?.variants ?? []
+  const filteredModels = availableModels.filter((item) => `${item.name} ${item.id} ${item.providerName} ${item.providerId}`.toLocaleLowerCase().includes(modelQuery.trim().toLocaleLowerCase()))
+  const modelGroups = Array.from(new Set(filteredModels.map((item) => item.providerId))).map((providerId) => ({ providerId, items: filteredModels.filter((item) => item.providerId === providerId) }))
   const totalTokens = session.tokens ? session.tokens.total ?? session.tokens.input + session.tokens.output + session.tokens.reasoning : undefined
   const activity = messages.flatMap((message) => message.parts.flatMap((part) =>
     part.type === "tool" ? [{ ...part, createdAt: message.createdAt }] : []
   )).reverse()
   return <section className="page active conversation-page"><div className="chat">
-    <div className="chathead"><button className="backbtn" type="button" onClick={onBack} aria-label="Back to dashboard"><Icon name="arrow-left" /></button><div className="grow truncate"><strong className="truncate">{session.title}</strong><div className="tiny muted"><span className={working ? "dot" : "session-glyph"} /> {working ? "Working" : "Idle"} · {selectedAgent || session.agent || "OpenCode"}</div></div><button className="btn modelbtn" type="button" title={model} aria-expanded={modelMenuOpen} onClick={() => setModelMenuOpen((open) => !open)}><span>{compactModelName(selectedModel?.name ?? session.model?.id ?? "Model")}</span><Icon name="chevron-down" /></button><button className="iconbtn danger-text" type="button" onClick={onDelete} aria-label="Delete session"><Icon name="close" /></button></div>
-    {modelMenuOpen && <div className="soft mb model-menu"><strong className="tiny muted">AVAILABLE MODELS</strong><div className="model-options">{availableModels.map((item) => <button className={`navbtn model-option ${selectedModel?.id === item.id && selectedModel.providerId === item.providerId ? "active" : ""}`} type="button" key={`${item.providerId}/${item.id}`} onClick={() => { setSelectedModel(item); setSelectedVariant(item.variants.includes(selectedVariant) ? selectedVariant : item.variants.includes("medium") ? "medium" : ""); setModelMenuOpen(false) }}><span className="grow truncate">{item.name}</span><small>{item.providerName}</small></button>)}</div>{availableModels.length === 0 && <p className="tiny muted">No connected models were reported by OpenCode.</p>}</div>}
+    <div className="chathead"><button className="backbtn" type="button" onClick={onBack} aria-label="Back to dashboard"><Icon name="arrow-left" /></button><div className="grow truncate"><strong className="truncate">{session.title}</strong><div className="tiny muted"><span className={working ? "dot" : "session-glyph"} /> {working ? "Working" : "Idle"} · {selectedAgent || session.agent || "OpenCode"}</div></div><button ref={modelTrigger} className="btn modelbtn" type="button" title={model} aria-label="Choose model" aria-controls="model-selector" aria-expanded={modelMenuOpen} onClick={() => setModelMenuOpen((open) => !open)}><span>{compactModelName(selectedModel?.name ?? session.model?.id ?? "Model")}</span><Icon name="chevron-down" /></button><button className="iconbtn danger-text" type="button" onClick={onDelete} aria-label="Delete session"><Icon name="close" /></button></div>
+    <div ref={modelMenu} id="model-selector" className="soft mb model-menu" hidden={!modelMenuOpen} role="region" aria-labelledby="model-selector-title">
+      <div className="model-menu__header"><strong id="model-selector-title">Available Models</strong><button className="iconbtn" type="button" aria-label="Close model selector" onClick={() => { setModelMenuOpen(false); modelTrigger.current?.focus() }}><Icon name="close" /></button></div>
+      <label className="model-menu__search"><span className="sr-only">Search models</span><input ref={modelSearch} className="input" type="search" placeholder="Search models…" value={modelQuery} onChange={(event) => setModelQuery(event.target.value)} /></label>
+      <div className="model-options">{modelGroups.map(({ providerId, items }) => <section className="model-group" key={providerId} aria-label={items[0]?.providerName}><h3>{items[0]?.providerName}</h3>{items.map((item) => {
+        const active = selectedModel?.id === item.id && selectedModel.providerId === item.providerId
+        return <button className={`navbtn model-option ${active ? "active" : ""}`} type="button" title={`${item.name} · ${item.providerName}`} aria-pressed={active} key={`${item.providerId}/${item.id}`} onClick={() => { setSelectedModel(item); setSelectedVariant(item.variants.includes(selectedVariant) ? selectedVariant : item.variants.includes("medium") ? "medium" : ""); setModelMenuOpen(false); modelTrigger.current?.focus() }}><span className="model-option__text"><span className="model-option__name">{item.name}</span><small>{item.providerName}</small></span>{active && <Icon name="check" />}</button>
+      })}</section>)}{filteredModels.length === 0 && <p className="tiny muted model-menu__empty">{availableModels.length === 0 ? "No connected models were reported by OpenCode." : "No models found."}</p>}</div>
+    </div>
     <div className="flex tiny mb conversation-pills"><span className="pill">Effort {selectedVariant || "default"}</span><span className="pill">{totalTokens === undefined ? "Tokens unavailable" : `${totalTokens.toLocaleString()} tokens`}</span><span className="pill">{session.cost === undefined ? "Cost unavailable" : `$${session.cost.toFixed(4)}`}</span><span className="pill">{session.parentId ? "Subagent" : "Primary session"}</span></div>
     <div className="tabs" role="tablist" aria-label="Session views">{([['chat','Conversation'],['changes','Changes'],['agents','Agents'],['logs','Logs']] as const).map(([id,label]) => <button className={`tab ${activeTab === id ? "active" : ""}`} role="tab" aria-selected={activeTab === id} type="button" key={id} onClick={() => setActiveTab(id)}>{label}</button>)}</div>
     <div className="conversation-content" key={activeTab}>
