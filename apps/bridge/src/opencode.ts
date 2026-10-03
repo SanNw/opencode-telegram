@@ -254,6 +254,7 @@ export type FileRegistrar = (input: {
   userId: string
   sessionId: string
   sourcePath: string
+  dataUrl?: string
   filename?: string
 }) => Promise<{
   attachmentId: string
@@ -407,11 +408,14 @@ async function mapRegisteredFilePart(
   registerFile: FileRegistrar | undefined,
 ): Promise<SafeFilePart> {
   const safe = mapFilePart(part, workspace, knownSecrets)
-  if (!userId || !registerFile || !part.source || part.source.type === "resource") return safe
+  if (!userId || !registerFile) return safe
+  const inlineImage = part.url?.startsWith("data:image/")
+  if (!inlineImage && (!part.source || part.source.type === "resource")) return safe
   const registered = await registerFile({
     userId,
     sessionId: part.sessionID,
-    sourcePath: part.source.path,
+    sourcePath: part.source && part.source.type !== "resource" ? part.source.path : "",
+    ...(inlineImage ? { dataUrl: part.url } : {}),
     ...(part.filename ? { filename: part.filename } : {}),
   })
   if (!registered) return safe
@@ -427,12 +431,14 @@ async function mapRegisteredFilePart(
 
 function mapToolPart(part: Extract<Part, { type: "tool" }>, knownSecrets: readonly string[] = []): Extract<ConversationPart, { type: "tool" }> {
   const state = part.state
+  const exit = state.status === "completed" && part.tool === "bash" ? state.metadata?.exit : undefined
+  const failedExit = typeof exit === "number" && Number.isInteger(exit) && exit !== 0
   return {
     id: part.id,
     type: "tool",
     callId: part.callID,
     tool: part.tool,
-    status: state.status,
+    status: failedExit ? "error" : state.status,
     ...((state.status === "running" || state.status === "completed") && state.title
       ? { title: redactText(state.title, knownSecrets) }
       : {}),
@@ -551,7 +557,7 @@ export function normalizeEvent(
         messageId: part.messageID,
         callId: part.callID,
         tool: part.tool,
-        status: part.state.status,
+        status: safe.status,
         ...(safe.title ? { title: safe.title } : {}),
         ...(safe.startedAt ? { startedAt: safe.startedAt } : {}),
         ...(safe.completedAt ? { completedAt: safe.completedAt } : {}),
@@ -1141,6 +1147,7 @@ export function createPromptSender(config: BridgeConfig) {
       sessionID: sessionId,
       directory: config.openCodeDirectory,
       parts: [...(text ? [{ type: "text" as const, text }] : []), ...files],
+      ...(config.imageGenerationProvider === "openai" ? { system: "Image-generation routing preference: use only the direct OpenAI Images API when an authorized, compatible OpenAI API key is available. Do not use 9Router or another gateway as a fallback for image generation. Do not assume OpenAI chat OAuth/ChatGPT credentials grant access to the Images API. If no compatible credential is available, explain that image generation is unavailable until configured; do not retry other providers or request repeated approvals for unsupported attempts. Never print credentials. This preference does not change the conversation model or authorize a paid generation by itself." } : {}),
       ...(selection.agent ? { agent: selection.agent } : {}),
       ...(selection.model ? { model: { providerID: selection.model.providerId, modelID: selection.model.modelId } } : {}),
       ...(selection.variant ? { variant: selection.variant } : {}),

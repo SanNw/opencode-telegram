@@ -288,6 +288,17 @@ export class BridgeStore {
         this.#database.prepare("INSERT INTO schema_migration (version, applied_at) VALUES (10, ?)").run(Date.now())
       })()
     }
+    if (version < 11) {
+      this.#database.transaction(() => {
+        this.#database.exec(`CREATE TABLE inline_attachment (
+          id TEXT PRIMARY KEY, lookup_key TEXT NOT NULL UNIQUE,
+          telegram_user_id TEXT NOT NULL REFERENCES authorized_user(telegram_user_id),
+          session_id TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL,
+          size INTEGER NOT NULL, content BLOB NOT NULL, expires_at INTEGER NOT NULL
+        ); CREATE INDEX inline_attachment_owner ON inline_attachment(telegram_user_id, expires_at);`)
+        this.#database.prepare("INSERT INTO schema_migration (version, applied_at) VALUES (11, ?)").run(Date.now())
+      })()
+    }
   }
 
   securityState(userId: string): SecurityState {
@@ -431,14 +442,15 @@ export class BridgeStore {
       expiredUploads: this.#database.prepare("SELECT COUNT(*) AS count, COALESCE(SUM(size),0) AS bytes FROM upload_blob WHERE telegram_user_id=? AND expires_at<?").get(userId, now),
       expiredHandles: (this.#database.prepare(`SELECT
         (SELECT COUNT(*) FROM file_handle WHERE telegram_user_id=? AND expires_at<?) +
-        (SELECT COUNT(*) FROM directory_handle WHERE telegram_user_id=? AND expires_at<?) AS count`).get(userId, now, userId, now) as { count: number }).count,
+        (SELECT COUNT(*) FROM directory_handle WHERE telegram_user_id=? AND expires_at<?) +
+        (SELECT COUNT(*) FROM inline_attachment WHERE telegram_user_id=? AND expires_at<?) AS count`).get(userId, now, userId, now, userId, now) as { count: number }).count,
     }
   }
 
   clearExpiredCache(userId: string, now = Math.floor(Date.now() / 1000)) {
     return this.#database.transaction(() => {
       const before = this.cacheSummary(userId, now)
-      for (const table of ["upload_blob", "file_handle", "directory_handle"]) {
+      for (const table of ["upload_blob", "file_handle", "directory_handle", "inline_attachment"]) {
         this.#database.prepare(`DELETE FROM ${table} WHERE telegram_user_id=? AND expires_at<?`).run(userId, now)
       }
       this.#database.prepare("INSERT INTO audit_event(created_at,event,telegram_user_id,outcome) VALUES (?,'cache.cleaned',?,'executed')").run(Date.now(), userId)
@@ -479,7 +491,29 @@ export class BridgeStore {
   }
 
   deleteExpiredUploads(now = Math.floor(Date.now() / 1_000)): number {
+    this.#database.prepare("DELETE FROM inline_attachment WHERE expires_at < ?").run(now)
     return this.#database.prepare("DELETE FROM upload_blob WHERE expires_at < ?").run(now).changes
+  }
+
+  getInlineAttachment(id: string, userId: string, now = Math.floor(Date.now() / 1000)): UploadRecord | undefined {
+    return this.#database.prepare(`SELECT id, telegram_user_id AS userId, name, mime, size, content, expires_at AS expiresAt
+      FROM inline_attachment WHERE id=? AND telegram_user_id=? AND expires_at>=?`).get(id, userId, now) as UploadRecord | undefined
+  }
+
+  findInlineAttachment(lookupKey: string, userId: string): UploadRecord | undefined {
+    return this.#database.prepare(`SELECT id, telegram_user_id AS userId, name, mime, size, content, expires_at AS expiresAt
+      FROM inline_attachment WHERE lookup_key=? AND telegram_user_id=? AND expires_at>=?`).get(lookupKey, userId, Math.floor(Date.now() / 1000)) as UploadRecord | undefined
+  }
+
+  inlineAttachmentBytes(userId: string): number {
+    return (this.#database.prepare("SELECT COALESCE(SUM(size),0) AS bytes FROM inline_attachment WHERE telegram_user_id=? AND expires_at>=?")
+      .get(userId, Math.floor(Date.now() / 1000)) as { bytes: number }).bytes
+  }
+
+  createInlineAttachment(input: UploadRecord & { lookupKey: string; sessionId: string }) {
+    this.#database.prepare("DELETE FROM inline_attachment WHERE expires_at < ?").run(Math.floor(Date.now() / 1000))
+    this.#database.prepare(`INSERT INTO inline_attachment(id,lookup_key,telegram_user_id,session_id,name,mime,size,content,expires_at)
+      VALUES (?,?,?,?,?,?,?,?,?)`).run(input.id, input.lookupKey, input.userId, input.sessionId, input.name, input.mime, input.size, input.content, input.expiresAt)
   }
 
   upsertDirectoryHandle(input: DirectoryHandleRecord & { lookupKey: string }): DirectoryHandleRecord {

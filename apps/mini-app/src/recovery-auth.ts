@@ -1,3 +1,4 @@
+import { t } from "./i18n.js"
 import { createStoredDeviceKey, getDeviceCredential, setDeviceCredential, signDeviceMessage } from "./device-auth.js"
 type RecoveryDependencies = {
   prepareStorage: typeof getDeviceCredential
@@ -15,8 +16,8 @@ export async function recoverDevice(recoveryKey: string, label: string, services
   const keys = await services.createKey()
   const proof = await services.sign(keys.privateKey, `opencode-telegram:recover:${recoveryKey}`)
   const response = await services.request("/api/v1/security/recovery/unlock", { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ recoveryKey, publicKey: keys.publicKey, label, proof }) })
-  if (!response.ok) throw new Error(response.status === 429 ? "Too many recovery attempts. Wait before trying again." : "Recovery could not be verified. Check your key and try again.")
+  if (!response.ok) throw new Error(response.status === 429 ? t("Too many recovery attempts. Wait before trying again.") : t("Recovery could not be verified. Check your key and try again."))
   const result = await response.json() as { deviceId: string }
-  if (!result.deviceId) throw new Error("Recovery returned no device credential.")
+  if (!result.deviceId) throw new Error(t("Recovery returned no device credential."))
   await services.store({ deviceId: result.deviceId, privateKey: keys.privateKey })
 }

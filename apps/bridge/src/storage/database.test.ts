@@ -1,6 +1,47 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BridgeStore } from "./database.js"
+import Database from "better-sqlite3"
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+test("online WAL backup and restored store preserve device revocation, lock, recovery verifier and audit", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bridge-restore-"))
+  const source = join(directory, "source.sqlite"), backupPath = join(directory, "backup.sqlite")
+  let store: BridgeStore | undefined = new BridgeStore(source)
+  let restored: BridgeStore | undefined
+  try {
+    const now = Math.floor(Date.now() / 1000)
+    store.ensureAuthorizedUser("279058397")
+    store.replacePairingCode("fixture-pairing", now + 600)
+    const deviceId = store.pairDevice("279058397", "fixture-init", now + 600, "fixture-pairing", "{}", "Restore fixture", "fixture-session", now + 600, now)
+    assert(deviceId)
+    const actor = { userId: "279058397", deviceId }
+    assert(store.configureRecovery(actor, "fixture-salt", "fixture-verifier"))
+    const pending = store.createPendingAbort(actor.userId, deviceId, "fixture-opencode-session")
+    store.lockRemoteAccess(actor, true, now)
+    const expectedDevices = store.listTrustedDevices(actor.userId)
+    const expectedAudit = store.listAuditEvents(actor.userId)
+    // Keep the live store open while using SQLite's online backup, not copying
+    // its main file without WAL. Restore into a separate disposable database.
+    const live = new Database(source, { readonly: true, fileMustExist: true })
+    try { await live.backup(backupPath) } finally { live.close() }
+    store.close(); store = undefined
+    restored = new BridgeStore(backupPath)
+    assert.deepEqual(restored.listTrustedDevices(actor.userId), expectedDevices)
+    assert.deepEqual(restored.listAuditEvents(actor.userId), expectedAudit)
+    assert.deepEqual(restored.securityState(actor.userId), { recoveryConfigured: true, locked: true, telegramCompromised: true })
+    assert.deepEqual(restored.recoveryVerifier(actor.userId), { salt: "fixture-salt", verifier: "fixture-verifier" })
+    assert.equal(restored.isSessionValid("fixture-session", now), false)
+    assert.equal(restored.decidePendingAction(pending, actor.userId, deviceId, "approve", now), undefined)
+    const inspection = new Database(backupPath, { readonly: true, fileMustExist: true })
+    try { assert.equal(inspection.pragma("integrity_check", { simple: true }), "ok") } finally { inspection.close() }
+  } finally {
+    restored?.close(); store?.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 
 test("Telegram initData is consumed atomically once", () => {
   const store = new BridgeStore(":memory:")

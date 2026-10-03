@@ -1,4 +1,4 @@
-import { t } from "./i18n.js"
+import { t, tf, stateLabel } from "./i18n.js"
 import { AppearanceSettings } from "./components/AppearanceSettings.js"
 import {
   useCallback,
@@ -128,11 +128,13 @@ function Navigation({
     ["settings", t("Settings")],
   ] as const;
   return (
-    <nav className={className} aria-label="Main navigation">
+    <nav className={className} aria-label={t("Main navigation")}>
       {items.map(([target, label]) => <button
         type="button"
         className={current === target ? "active" : ""}
         aria-current={current === target ? "page" : undefined}
+        aria-label={label}
+        title={label}
         onClick={() => onChange(target)}
         key={target}
       >
@@ -401,7 +403,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
   useEffect(() => {
     if (!devices)
       void loadSettings().catch(() =>
-        setDeviceError("Security settings are unavailable."),
+        setDeviceError(t("Security settings are unavailable.")),
       );
   }, [devices, loadSettings]);
 
@@ -447,7 +449,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
         <button
           className="session-delete"
           type="button"
-          aria-label={`Delete ${session.title}`}
+          aria-label={tf("Delete {name}?", { name: session.title })}
           onClick={() => {
             setDrawerOpen(false);
             setDeleteTarget(session);
@@ -475,7 +477,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
       );
       setRevokeTarget(undefined);
     } catch {
-      setDeviceError("The device could not be revoked.");
+      setDeviceError(t("The device could not be revoked."));
     } finally {
       setRevoking(false);
     }
@@ -505,7 +507,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
         ...(newSessionAgent ? { agent: newSessionAgent } : {}),
       });
     } catch {
-      setActionError("The new session could not be proposed.");
+      setActionError(t("The new session could not be proposed."));
     } finally {
       setActing(false);
     }
@@ -540,7 +542,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
       setNewSessionTitle("");
       setNewSessionAgent("");
     } catch {
-      setActionError("The new session action is no longer available.");
+      setActionError(t("The new session action is no longer available."));
     } finally {
       setActing(false);
     }
@@ -628,10 +630,10 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
     ) ?? [];
   const capabilityValue = (name: string, value: string) => {
     if (capabilityStatus === "loading") return t("Loading…");
-    if (capabilityStatus === "error") return "Error";
+    if (capabilityStatus === "error") return t("Error");
     const capability = capabilities?.capabilities[name];
     if (capability?.status === "available") return value;
-    return capability?.status === "disabled" ? t("Disabled") : "Unsupported";
+    return capability?.status === "disabled" ? t("Disabled") : t("Unsupported");
   };
   const usageAvailable =
     capabilityStatus === "ready" &&
@@ -639,10 +641,10 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
   const usageState = capabilityValue("tokens", "");
   const catalogSummary =
     catalogStatus === "loading"
-      ? "Loading provider catalog…"
+      ? t("Loading provider catalog…")
       : catalogStatus === "error"
-        ? "Provider catalog could not be loaded."
-        : `${connectedProviders.length} connected providers · ${availableModels.length} available models`;
+        ? t("Provider catalog could not be loaded.")
+        : tf("{providers} connected providers · {models} available models", { providers: connectedProviders.length, models: availableModels.length });
 
   return (
     <div className={`shell ${page === "conversation" ? "conversation-shell" : ""}`}>
@@ -650,7 +652,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
         <button
           className="iconbtn"
           type="button"
-          aria-label="Open sessions"
+          aria-label={t("Open sessions")}
           aria-expanded={drawerOpen}
           onClick={() => setDrawerOpen(true)}
         >
@@ -661,14 +663,14 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           <strong>OpenCode Telegram</strong>
           <div className="tiny muted">
             <span className={online ? "dot" : "dot offline"} /> OpenCode{" "}
-            {online ? "online" : "offline"}
+            {online ? t("online") : t("offline")}
           </div>
         </div>
       </header>
       <button
         className={`overlay ${drawerOpen ? "open" : ""}`}
         type="button"
-        aria-label="Close sessions"
+        aria-label={t("Close sessions")}
         onClick={() => setDrawerOpen(false)}
       />
       <aside
@@ -680,7 +682,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           <button
             type="button"
             className="iconbtn"
-            aria-label="Close sessions"
+            aria-label={t("Close sessions")}
             onClick={() => setDrawerOpen(false)}
           >
             <Icon name="close" />
@@ -739,7 +741,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           )}
           {actionError && (
             <p className="conversation-error" role="alert">
-              {actionError}
+              {t(actionError)}
             </p>
           )}
           {!snapshot && !error && (
@@ -761,19 +763,19 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     openSession(workingSession ?? snapshot.sessions[0]!)
                   }
                 >
-                  {workingSession ? "Open working session" : t("Open latest session")}
+                  {workingSession ? t("Open working session") : t("Open latest session")}
                 </button>
               </div>
               <div className="grid4">
                 <div className="card">
                   <div className="tiny muted">{t("SESSIONS")}</div>
                   <div className="metric">{snapshot.sessions.length}</div>
-                  <div className="tiny muted">{activeSessions} working</div>
+                  <div className="tiny muted">{activeSessions} {t("working")}</div>
                 </div>
                 <div className="card">
                   <div className="tiny muted">{t("AGENTS")}</div>
                   <div className="metric">{availableSubagents.length}</div>
-                  <div className="tiny muted">available subagents</div>
+                  <div className="tiny muted">{t("available subagents")}</div>
                 </div>
                 <div className="card">
                   <div className="tiny muted">{t("SESSION TOKENS")}</div>
@@ -808,14 +810,14 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     >
                       <div className="flex">
                         <strong className="grow">{projectName(project)}</strong>
-                        <span className="pill">{sessions.length} sessions</span>
+                        <span className="pill">{sessions.length} {t("sessions")}</span>
                       </div>
                       <div className="small muted mt truncate">
                         {project.worktree}
                       </div>
                       <div className="flex between tiny muted mt">
                         <span>
-                          {sessions[0]?.model?.id ?? "OpenCode workspace"}
+                          {sessions[0]?.model?.id ?? t("OpenCode workspace")}
                         </span>
                         <span>
                           {
@@ -823,7 +825,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                               ({ id }) => sessionStatus[id] === "busy",
                             ).length
                           }{" "}
-                          active
+                          {t("active")}
                         </span>
                       </div>
                     </button>
@@ -889,9 +891,9 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     <div className="row" key={item.id}>
                       <Icon name="check" />
                       <div className="grow small">
-                        {item.event.replaceAll(".", " ")}
+                        {t(item.event.replaceAll(".", " "))}
                         <div className="tiny muted">
-                          {item.outcome} · {formatSessionTime(item.createdAt)}
+                          {stateLabel(item.outcome)} · {formatSessionTime(item.createdAt)}
                         </div>
                       </div>
                     </div>
@@ -918,13 +920,13 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                       <div className="grow truncate">
                         <strong>{projectName(project)}</strong>
                         <div className="tiny muted truncate">
-                          {sessions.length} sessions ·{" "}
+                          {sessions.length} {t("sessions")} ·{" "}
                           {
                             sessions.filter(
                               ({ id }) => sessionStatus[id] === "busy",
                             ).length
                           }{" "}
-                          active
+                          {t("active")}
                         </div>
                       </div>
                       <button
@@ -938,8 +940,8 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                 })}
               </div>
               <div className="sectionTitle">{t("Workspace")}</div>
-              <div className="tabs" aria-label="Workspace views">{(["overview", "git", "artifacts"] as const).map((tab) => <button className={`tab ${projectTab === tab ? "active" : ""}`} type="button" aria-pressed={projectTab === tab} key={tab} onClick={() => setProjectTab(tab)}>{tab === "overview" ? t("Overview") : tab === "git" ? "Git" : t("Artifacts")}</button>)}</div>
-              {projectTab === "overview" && <div className="card"><div className="row"><strong className="grow">{vcs?.branch ?? t("Workspace")}</strong><span className="pill">{vcs?.files.length ?? "—"} changed</span></div><p className="small muted">{t("Open Git to review changes or Artifacts to preview useful outputs from OpenCode.")}</p></div>}
+              <div className="tabs" aria-label={t("Workspace views")}>{(["overview", "git", "artifacts"] as const).map((tab) => <button className={`tab ${projectTab === tab ? "active" : ""}`} type="button" aria-pressed={projectTab === tab} key={tab} onClick={() => setProjectTab(tab)}>{tab === "overview" ? t("Overview") : tab === "git" ? "Git" : t("Artifacts")}</button>)}</div>
+              {projectTab === "overview" && <div className="card"><div className="row"><strong className="grow">{vcs?.branch ?? t("Workspace")}</strong><span className="pill">{vcs?.files.length ?? "—"} {t("changed")}</span></div><p className="small muted">{t("Open Git to review changes or Artifacts to preview useful outputs from OpenCode.")}</p></div>}
               {projectTab === "git" && <GitPanel context={controlContext} />}
               {projectTab === "artifacts" && <ArtifactGallery context={controlContext} />}
             </section>
@@ -965,10 +967,10 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     <div className="grow">
                       <strong>{agent.name}</strong>
                       <div className="tiny muted">
-                        {agent.description ?? "No description provided."}
+                        {agent.description ?? t("No description provided.")}
                       </div>
                     </div>
-                    <span className="pill">{agent.mode}</span>
+                    <span className="pill">{stateLabel(agent.mode)}</span>
                   </button>
                 ))}
               </div>
@@ -988,7 +990,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     <div className="grow">
                       <strong>{session.agent ?? session.title}</strong>
                       <div className="tiny muted">
-                        Subagent · {session.model?.id ?? "OpenCode"}
+                        {t("Subagent")} · {session.model?.id ?? "OpenCode"}
                       </div>
                     </div>
                     <span className="pill">
@@ -1004,7 +1006,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     <div>
                       <strong>{selectedAgent.name}</strong>
                       <div className="tiny muted">
-                        {selectedAgent.description ?? "No description provided."}
+                        {selectedAgent.description ?? t("No description provided.")}
                       </div>
                     </div>
                     <span className="pill">{t("Configured")}</span>
@@ -1013,7 +1015,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     <div className="soft">
                       <strong className="tiny">{t("TYPE")}</strong>
                       <div className="small mt muted">
-                        {selectedAgent.mode} · {selectedAgent.native ? "native" : "custom"}
+                        {stateLabel(selectedAgent.mode)} · {selectedAgent.native ? t("Native") : t("Custom")}
                       </div>
                     </div>
                     <div className="soft">
@@ -1026,7 +1028,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     </div>
                   </div>
                   {selectedAgent.variant && (
-                    <div className="small mt muted">Default effort: {selectedAgent.variant}</div>
+                    <div className="small mt muted">{t("Default effort")}: {stateLabel(selectedAgent.variant)}</div>
                   )}
                   <button
                     className="btn primary wfull mt"
@@ -1036,7 +1038,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                       setNewSessionOpen(true);
                     }}
                   >
-                    <Icon name="plus" /> New session with {selectedAgent.name}
+                    <Icon name="plus" /> {t("New session with")} {selectedAgent.name}
                   </button>
                 </div>
               ) : (
@@ -1121,14 +1123,14 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                     </div>
                     <div className="card">
                       <div className="tiny muted">{t("NETWORK BINDING")}</div>
-                      <div className="metric">Loopback</div>
+                      <div className="metric">{t("Loopback")}</div>
                       <div className="small muted">{t("Bridge and OpenCode remain local")}</div>
                     </div>
                   </div>
                   <div className="sectionTitle">{t("Trusted devices")}</div>
                   <div className="card">
                     {deviceError && (
-                      <p className="conversation-error">{deviceError}</p>
+                      <p className="conversation-error">{t(deviceError)}</p>
                     )}
                     {!devices && !deviceError && (
                       <p className="loading">{t("Loading devices…")}</p>
@@ -1139,7 +1141,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                         <div className="grow">
                           <strong>{device.label}</strong>
                           <div className="tiny muted">
-                            Last authenticated{" "}
+                            {t("Last authenticated")}{" "}
                             {new Intl.DateTimeFormat(undefined, {
                               dateStyle: "medium",
                               timeStyle: "short",
@@ -1164,7 +1166,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                       <div className="row" key={event.id}>
                         <div className="grow">
                           <div className="small">
-                            {event.event.replaceAll(".", " ")}
+                            {t(event.event.replaceAll(".", " "))}
                           </div>
                           <div className="tiny muted">
                             {new Intl.DateTimeFormat(undefined, {
@@ -1173,7 +1175,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                             }).format(event.createdAt)}
                           </div>
                         </div>
-                        <span className="pill">{event.outcome}</span>
+                        <span className="pill">{stateLabel(event.outcome)}</span>
                       </div>
                     ))}
                   </div>
@@ -1190,7 +1192,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
                   ) : capabilities?.capabilities.storage?.status === "available" ? (
                     <div className="card storage-card"><StorageBrowser onUnauthorized={onUnauthorized} /></div>
                   ) : (
-                    <div className="card"><div className="empty-state"><strong>{t("Secure workspace browsing is disabled")}</strong><span>{capabilities?.capabilities.storage?.reason ?? "The Bridge has not enabled opaque directory access."}</span></div></div>
+                    <div className="card"><div className="empty-state"><strong>{t("Secure workspace browsing is disabled")}</strong><span>{t(capabilities?.capabilities.storage?.reason ?? "The Bridge has not enabled opaque directory access.")}</span></div></div>
                   )}
                 </div>
               )}
@@ -1222,7 +1224,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           aria-labelledby="revoke-device-title"
         >
           <small>{t("SECURITY CONFIRMATION")}</small>
-          <h2 id="revoke-device-title">Revoke {revokeTarget.label}?</h2>
+          <h2 id="revoke-device-title">{tf("Revoke {name}?", { name: revokeTarget.label })}</h2>
           <blockquote>{t("This device will immediately lose access and its active Bridge sessions will end.")}</blockquote>
           <div>
             <button
@@ -1261,7 +1263,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
               maxLength={120}
               value={newSessionTitle}
               onChange={(event) => setNewSessionTitle(event.target.value)}
-              placeholder="Remote task"
+              placeholder={t("Remote task")}
             />
             <div>
               <button
@@ -1287,9 +1289,9 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           <small>{t("PERMISSION REQUIRED")}</small>
           <h2 id="confirm-session-title">{t("Create this OpenCode session?")}</h2>
           <blockquote>
-            <span>{createProposal.title ?? "Untitled session in the configured workspace"}</span>
+            <span>{createProposal.title ?? t("Untitled session in the configured workspace")}</span>
             {createProposal.agent && (
-              <span className="approval-attachment">Agent: {createProposal.agent}</span>
+              <span className="approval-attachment">{t("Agent")}: {createProposal.agent}</span>
             )}
           </blockquote>
           <div>
@@ -1316,7 +1318,7 @@ export function Dashboard({ onUnauthorized, onLocked }: { onUnauthorized: () => 
           aria-labelledby="delete-session-title"
         >
           <small>{t("DELETE SESSION")}</small>
-          <h2 id="delete-session-title">Delete {deleteTarget.title}?</h2>
+          <h2 id="delete-session-title">{tf("Delete {name}?", { name: deleteTarget.title })}</h2>
           <blockquote>{t("This permanently deletes the OpenCode session and its conversation history. This action cannot be undone.")}</blockquote>
           <div>
             <button

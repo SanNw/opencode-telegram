@@ -122,8 +122,10 @@ export class AttachmentService {
     userId: string
     sessionId: string
     sourcePath: string
+    dataUrl?: string
     filename?: string
   }): Promise<RegisteredAttachment | undefined> {
+    if (input.dataUrl) return this.#registerInlineImage(input.userId, input.sessionId, input.dataUrl, input.filename)
     // Windows absolute paths are valid only on a native Windows host. The
     // canonical workspace containment check below still rejects other drives.
     if (!input.sourcePath || input.sourcePath.includes("\0") || (process.platform !== "win32" && /^[A-Za-z]:[\\/]/.test(input.sourcePath))) {
@@ -183,6 +185,28 @@ export class AttachmentService {
   async storageRoot(userId: string): Promise<{ id: string; name: string }> {
     const root = await this.#rootPromise
     return this.#registerDirectory(userId, root)
+  }
+
+  #registerInlineImage(userId: string, sessionId: string, dataUrl: string, filename?: string): RegisteredAttachment | undefined {
+    // Never fetch remote URLs or expose data URLs to the browser. Bound the
+    // encoded payload before decoding, then verify bytes rather than MIME alone.
+    if (dataUrl.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 128) return undefined
+    const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl)
+    if (!match || match[2]!.length % 4 !== 0) return undefined
+    const content = Buffer.from(match[2]!, "base64")
+    if (!content.length || content.length > MAX_IMAGE_BYTES || content.toString("base64") !== match[2]) return undefined
+    const name = safeName(filename ?? "image")
+    if (isBlockedName(name)) return undefined
+    const delivery = detectDelivery(content.subarray(0, 512), name)
+    if (delivery.preview !== "image" || delivery.mime.split(";")[0] !== match[1]) return undefined
+    const lookupKey = createHash("sha256").update(`${userId}\0${sessionId}\0${name}\0`).update(content).digest("hex")
+    const existing = this.#store.findInlineAttachment(lookupKey, userId)
+    if (existing) return { attachmentId: existing.id, name: existing.name, mime: existing.mime, size: existing.size, preview: "image" }
+    if (this.#store.inlineAttachmentBytes(userId) + content.length > MAX_BYTES_PER_MINUTE) return undefined
+    this.#consumeLimit(userId, content.length)
+    const id = `att_${randomBytes(24).toString("base64url")}`
+    this.#store.createInlineAttachment({ id, lookupKey, sessionId, userId, name, mime: delivery.mime, size: content.length, content, expiresAt: Math.floor(Date.now() / 1000) + HANDLE_TTL_SECONDS })
+    return { attachmentId: id, name, mime: delivery.mime, size: content.length, preview: "image" }
   }
 
   createUpload(userId: string, filename: string, content: Buffer): RegisteredAttachment {
@@ -283,6 +307,12 @@ export class AttachmentService {
   async read(userId: string, attachmentId: string): Promise<AttachmentContent> {
     if (!/^att_[A-Za-z0-9_-]{32}$/.test(attachmentId)) {
       throw new AttachmentError(404, "Attachment not found")
+    }
+    const inline = this.#store.getInlineAttachment(attachmentId, userId)
+    if (inline) {
+      this.#consumeLimit(userId, inline.size)
+      this.#store.recordFileAccess(userId, "accepted")
+      return { attachmentId, name: inline.name, mime: inline.mime, size: inline.size, preview: "image", disposition: "inline", content: inline.content }
     }
     const stored = this.#store.getFileHandle(attachmentId, userId)
     if (!stored) throw new AttachmentError(404, "Attachment not found")

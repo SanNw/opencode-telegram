@@ -21,6 +21,38 @@ import {
   normalizeEvent,
 } from "./opencode.js"
 
+test("uploaded inline image without a source path gets an opaque preview and never leaks its data URL", async () => {
+  const dataUrl = "data:image/png;base64,iVBORw0KGgo="
+  const upstream = createServer((request, response) => {
+    response.writeHead(200, { "content-type": "application/json" })
+    if (new URL(request.url!, "http://localhost").pathname === "/session/s-inline") {
+      response.end(JSON.stringify({ id: "s-inline", directory: "/workspace", projectID: "fixture", title: "Inline fixture", time: { created: 1000, updated: 1000 } }))
+      return
+    }
+    response.end(JSON.stringify(request.url?.includes("/message") ? [{
+      info: { id: "m-inline", sessionID: "s-inline", role: "user", time: { created: 1000 } },
+      parts: [{ id: "p-inline", sessionID: "s-inline", messageID: "m-inline", type: "file", mime: "image/png", filename: "phone.png", url: dataUrl }],
+    }] : []))
+  })
+  await new Promise<void>(resolve => upstream.listen(0, "127.0.0.1", resolve))
+  try {
+    const address = upstream.address(); assert(address && typeof address !== "string")
+    const inputs: unknown[] = []
+    const loader = createMessageLoader({ bridgeHost: "127.0.0.1", bridgePort: 8787, databasePath: ":memory:", openCodeUrl: new URL(`http://127.0.0.1:${address.port}`), openCodeDirectory: "/workspace", openCodeUsername: "opencode" }, async input => {
+      inputs.push(input)
+      return { attachmentId: `att_${"b".repeat(32)}`, name: "phone.png", mime: "image/png", size: 8, preview: "image" }
+    })
+    const result = await loader("s-inline", { userId: "owner" })
+    assert.deepEqual(inputs, [{ userId: "owner", sessionId: "s-inline", sourcePath: "", filename: "phone.png", dataUrl }])
+    assert.equal(result[0]?.content?.[0]?.type, "file")
+    assert.match(JSON.stringify(result), /att_b{32}/)
+    assert.equal(JSON.stringify(result).includes(dataUrl), false)
+    inputs.length = 0
+    await loader("s-inline")
+    assert.equal(inputs.length, 0)
+  } finally { await new Promise<void>((resolve, reject) => upstream.close(error => error ? reject(error) : resolve())) }
+})
+
 test("attachment capabilities are enabled only when the secure delivery service is wired", async () => {
   const disabled = await createCapabilitiesLoader()()
   const enabled = await createCapabilitiesLoader(true, true)()
@@ -254,6 +286,13 @@ test("conversation adapter normalizes text and sends the approved prompt", async
     assert.match(prompt?.body ?? "", /OpenAgent/)
     assert.match(prompt?.body ?? "", /provider-1/)
     assert.match(prompt?.body ?? "", /medium/)
+    assert.equal(JSON.parse(prompt!.body).system, undefined)
+    await createPromptSender({ ...config, imageGenerationProvider: "openai" })("session-1", "Image request")
+    const routedPrompt = requests.filter((request) => request.url?.includes("prompt_async")).at(-1)
+    const instruction = JSON.parse(routedPrompt!.body).system
+    assert.match(instruction, /direct OpenAI Images API/)
+    assert.match(instruction, /Do not use 9Router/)
+    assert.match(instruction, /does not change the conversation model/)
     await createSessionAborter(config)("session-1")
     assert(requests.some((request) => request.url?.includes("/abort")))
     await createSessionDeleter(config)("session-1")
@@ -302,6 +341,18 @@ test("conversation adapter normalizes text and sends the approved prompt", async
     assert.doesNotMatch(JSON.stringify(catalog), /must-not-leak|secret\.invalid|SECRET_ENV|Authorization|private instructions|\/secret\//)
   } finally {
     await new Promise<void>((resolve, reject) => upstream.close((error) => error ? reject(error) : resolve()))
+  }
+})
+
+test("bash nonzero exit is a failure even when OpenCode marks the tool completed", () => {
+  for (const exit of [0, 1, 22]) {
+    const result = normalizeEvent({ id: `exit-${exit}`, type: "message.part.updated", properties: {
+      sessionID: "s", time: 2, part: { id: "p", sessionID: "s", messageID: "m", type: "tool", callID: "c", tool: "bash",
+        state: { status: "completed", title: "Fixture command", input: { secret: "do-not-leak" }, output: "do-not-leak", metadata: { exit, output: "do-not-leak" }, time: { start: 1, end: 2 } } },
+    } } as Event)
+    assert.equal(result?.type, "tool.updated")
+    assert.equal((result as { status: string }).status, exit === 0 ? "completed" : "error")
+    assert.equal(JSON.stringify(result).includes("do-not-leak"), false)
   }
 })
 

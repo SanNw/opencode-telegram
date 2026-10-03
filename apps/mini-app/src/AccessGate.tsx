@@ -73,8 +73,8 @@ export function AccessGate({ state, onRetry, onPair, onClose, onRecover, childre
           <>
             <h1 id="access-title" ref={heading} tabIndex={-1}>{t("Access unavailable")}</h1>
             <p>{state.reason === "missing_context"
-              ? "Telegram did not provide an authenticated Mini App context. Open this page from the bot menu inside Telegram."
-              : `Telegram opened the Mini App, but the signed session could not be validated${state.status ? ` (HTTP ${state.status})` : ""}.`}</p>
+              ? t("Telegram did not provide an authenticated Mini App context. Open this page from the bot menu inside Telegram.")
+              : <>{t("Telegram opened the Mini App, but the signed session could not be validated.")}{state.status ? ` (HTTP ${state.status})` : ""}</>}</p>
             <button className="primary" type="button" onClick={onClose}>{t("Close")}</button>
           </>
         )}
@@ -87,8 +87,8 @@ export function AccessGate({ state, onRetry, onPair, onClose, onRecover, childre
           </>
         )}
         {state.kind === "locked" && <>
-          <h1 id="access-title" ref={heading} tabIndex={-1}>{state.telegramCompromised ? "Telegram marked as compromised" : t("Remote access locked")}</h1>
-          <p role="status">{state.telegramCompromised ? "Your Telegram-compromised action succeeded. Remote access is locked, sessions were revoked and pending actions frozen." : "Your lock action succeeded. Remote sessions were revoked and pending actions frozen."}</p>
+          <h1 id="access-title" ref={heading} tabIndex={-1}>{state.telegramCompromised ? t("Telegram marked as compromised") : t("Remote access locked")}</h1>
+          <p role="status">{state.telegramCompromised ? t("Your Telegram-compromised action succeeded. Remote access is locked, sessions were revoked and pending actions frozen.") : t("Your lock action succeeded. Remote sessions were revoked and pending actions frozen.")}</p>
           <p>{t("Unlock with your independent Recovery Key below. Local OpenCode data and audit evidence are preserved.")}</p>
           <button className="secondary" type="button" onClick={onClose}>{t("Close")}</button>
         </>}
@@ -99,7 +99,7 @@ export function AccessGate({ state, onRetry, onPair, onClose, onRecover, childre
             event.preventDefault()
             const form = event.currentTarget, key = String(new FormData(form).get("recoveryKey") ?? "").trim()
             form.reset(); setRecovering(true); setRecoveryError("")
-            void onRecover(key).catch((failure: unknown) => setRecoveryError(failure instanceof Error ? failure.message : "Recovery unavailable.")).finally(() => setRecovering(false))
+            void onRecover(key).catch((failure: unknown) => setRecoveryError(failure instanceof Error ? failure.message : t("Recovery unavailable."))).finally(() => setRecovering(false))
           }}>
             <label htmlFor="access-recovery-key">{t("Recovery Key")}</label>
             <input id="access-recovery-key" name="recoveryKey" type="password" autoComplete="off" spellCheck={false} maxLength={128} required disabled={recovering} />

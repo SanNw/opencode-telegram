@@ -21,8 +21,8 @@ export function CodeBlock({ content, language, filename }: CodeBlockProps) {
 
   return <figure className="code-block">
     <figcaption className="code-block__header">
-      <span className="code-block__label">{filename ?? language ?? "Code"}</span>
-      <button className="code-block__copy" type="button" onClick={() => void copy()} aria-label={copied ? "Code copied" : "Copy code"}>
+      <span className="code-block__label">{filename ?? language ?? t("Code")}</span>
+      <button className="code-block__copy" type="button" onClick={() => void copy()} aria-label={copied ? t("Code copied") : t("Copy code")}>
         {copied ? t("Copied") : t("Copy")}
       </button>
     </figcaption>

@@ -33,7 +33,7 @@ export function StorageBrowser({ onUnauthorized }: { onUnauthorized: () => void 
         : next)
       if (!cursor) setQuery("")
     } catch {
-      setError("This folder could not be loaded.")
+      setError(t("This folder could not be loaded."))
     } finally {
       setLoading(false)
     }
@@ -48,7 +48,7 @@ export function StorageBrowser({ onUnauthorized }: { onUnauthorized: () => void 
         const body = await response.json() as { root: { id: string } }
         await loadDirectory(body.root.id)
       } catch {
-        setLoading(false); setError("Workspace storage is unavailable.")
+        setLoading(false); setError(t("Workspace storage is unavailable."))
       }
     })()
   }, [loadDirectory, onUnauthorized])
@@ -73,7 +73,7 @@ export function StorageBrowser({ onUnauthorized }: { onUnauthorized: () => void 
       const content = await response.text()
       setPreview((current) => current?.entry.id === entry.id ? { entry, content } : current)
     } catch {
-      setPreview((current) => current?.entry.id === entry.id ? { entry, error: "Preview could not be loaded." } : current)
+      setPreview((current) => current?.entry.id === entry.id ? { entry, error: t("Preview could not be loaded.") } : current)
     }
   }
 
@@ -85,7 +85,7 @@ export function StorageBrowser({ onUnauthorized }: { onUnauthorized: () => void 
     </div>
     <label className="sr-only" htmlFor="storage-search">{t("Filter files")}</label>
     <input id="storage-search" className="input" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Filter this folder")} />
-    {error && <div className="notice storage-notice" role="alert"><span>{error}</span><button className="btn" type="button" onClick={() => listing && void loadDirectory(listing.directory.id)}>{t("Try again")}</button></div>}
+    {error && <div className="notice storage-notice" role="alert"><span>{t(error)}</span><button className="btn" type="button" onClick={() => listing && void loadDirectory(listing.directory.id)}>{t("Try again")}</button></div>}
     {loading && !listing && <p className="loading" role="status">{t("Loading workspace…")}</p>}
     {!loading && !error && visible.length === 0 && <div className="empty-state"><strong>{query ? t("No matching files") : t("This folder is empty")}</strong><span>{query ? t("Change the filter to see other entries.") : t("OpenCode has no visible files here.")}</span></div>}
     <div className="storage-list">{visible.map((entry) => <button className="storage-entry" type="button" key={entry.id} onClick={() => void openEntry(entry)}>
@@ -96,7 +96,7 @@ export function StorageBrowser({ onUnauthorized }: { onUnauthorized: () => void 
     {listing?.nextCursor && !query && <button className="btn wfull" type="button" disabled={loading} onClick={() => void loadDirectory(listing.directory.id, listing.nextCursor)}>{loading ? t("Loading…") : t("Load more")}</button>}
     {preview && <section className="storage-preview" role="dialog" aria-modal="true" aria-labelledby="storage-preview-title">
       <div className="storage-preview__head"><strong className="grow truncate" id="storage-preview-title">{preview.entry.name}</strong><button className="iconbtn" type="button" autoFocus aria-label={t("Close preview")} onClick={() => setPreview(undefined)}><Icon name="close" /></button></div>
-      <div className="storage-preview__body">{preview.loading ? <p className="loading">{t("Loading preview…")}</p> : preview.error ? <p className="conversation-error" role="alert">{preview.error}</p> : preview.entry.mime.startsWith("text/html") ? <><p className="tiny muted">{t("Static preview · scripts, forms and external resources are blocked.")}</p><iframe className="html-preview" title={preview.entry.name} sandbox="" referrerPolicy="no-referrer" src={`/api/v1/attachments/${encodeURIComponent(preview.entry.id)}/preview`} /></> : preview.entry.preview === "image" ? <img src={`/api/v1/attachments/${encodeURIComponent(preview.entry.id)}`} alt={preview.entry.name} /> : <CodeBlock content={preview.content ?? ""} filename={preview.entry.name} />}</div>
+      <div className="storage-preview__body">{preview.loading ? <p className="loading">{t("Loading preview…")}</p> : preview.error ? <p className="conversation-error" role="alert">{t(preview.error)}</p> : preview.entry.mime.startsWith("text/html") ? <><p className="tiny muted">{t("Static preview · scripts, forms and external resources are blocked.")}</p><iframe className="html-preview" title={preview.entry.name} sandbox="" referrerPolicy="no-referrer" src={`/api/v1/attachments/${encodeURIComponent(preview.entry.id)}/preview`} /></> : preview.entry.preview === "image" ? <img src={`/api/v1/attachments/${encodeURIComponent(preview.entry.id)}`} alt={preview.entry.name} /> : <CodeBlock content={preview.content ?? ""} filename={preview.entry.name} />}</div>
       <div className="storage-preview__actions"><button className="btn" type="button" onClick={() => openFile(preview.entry.id)}>{t("Open original")}</button><button className="btn primary" type="button" onClick={() => setPreview(undefined)}>{t("Close")}</button></div>
     </section>}
   </div>

@@ -8,6 +8,7 @@ export type BridgeConfig = {
   openCodePassword?: string
   /** Exact trusted remote destinations; empty means no new skill/MCP egress. */
   managementAllowedHosts?: string[]
+  imageGenerationProvider?: "openai"
   telegram?: {
     botToken: string
     ownerId: string
@@ -29,6 +30,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
   }
 
   const databasePath = env.BRIDGE_DATABASE_PATH ?? "./data/bridge.sqlite"
+  if (env.IMAGE_GENERATION_PROVIDER && env.IMAGE_GENERATION_PROVIDER !== "openai") throw new Error("IMAGE_GENERATION_PROVIDER must be openai or empty")
   if (!databasePath.trim() || databasePath.includes("\0")) {
     throw new Error("BRIDGE_DATABASE_PATH must be a valid path")
   }
@@ -73,6 +75,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
     openCodeUrl,
     openCodeDirectory,
     managementAllowedHosts,
+    ...(env.IMAGE_GENERATION_PROVIDER === "openai" ? { imageGenerationProvider: "openai" as const } : {}),
     openCodeUsername: env.OPENCODE_SERVER_USERNAME ?? "opencode",
     ...(env.OPENCODE_SERVER_PASSWORD ? { openCodePassword: env.OPENCODE_SERVER_PASSWORD } : {}),
     ...(botToken && ownerId ? { telegram: { botToken, ownerId, ...(miniAppUrl ? { miniAppUrl } : {}) } } : {}),

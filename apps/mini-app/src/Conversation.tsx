@@ -1,4 +1,4 @@
-import { t } from "./i18n.js"
+import { t, tf, stateLabel } from "./i18n.js"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent, type UIEvent } from "react"
 import type { Session } from "./Dashboard.js"
 import { controlErrorMessage, replyOpenCodePermission } from "./control-api.js"
@@ -67,7 +67,7 @@ function fileMessagePart(part: Omit<ServerFilePart, "type">): MessagePart {
       ...(part.size !== undefined ? { size: part.size } : {}),
     }
   }
-  return { type: "status", content: `Attachment: ${name}. Secure preview is unavailable for this item.` }
+  return { type: "status", content: tf("Attachment: {name}. Secure preview is unavailable for this item.", { name }) }
 }
 
 function messageParts(message: ServerMessage): MessagePart[] {
@@ -92,7 +92,7 @@ function toChatMessage(message: ServerMessage): ChatMessage {
 
 function toFileChange(diff: ServerDiff): FileChange {
   return {
-    file: diff.file ?? "Changed file",
+    file: diff.file ?? t("Changed file"),
     diff: diff.patch ?? "",
     status: diff.status === "added" ? "created" : diff.status === "deleted" ? "deleted" : "modified",
     additions: diff.additions,
@@ -125,6 +125,26 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
   const [newMessages, setNewMessages] = useState(false)
   const [uploads, setUploads] = useState<PendingUpload[]>([]), [uploading, setUploading] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(session.agent ?? "")
+  const [agentMenuOpen, setAgentMenuOpen] = useState(false)
+  const agentControl = useRef<HTMLDivElement>(null), agentTrigger = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const update = () => document.documentElement.style.setProperty("--app-visible-height", `${window.visualViewport?.height ?? window.innerHeight}px`)
+    update()
+    window.addEventListener("resize", update)
+    window.visualViewport?.addEventListener("resize", update)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.visualViewport?.removeEventListener("resize", update)
+      document.documentElement.style.removeProperty("--app-visible-height")
+    }
+  }, [])
+  useEffect(() => {
+    if (!agentMenuOpen) return
+    const outside = (event: PointerEvent) => { if (!agentControl.current?.contains(event.target as Node)) setAgentMenuOpen(false) }
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setAgentMenuOpen(false); agentTrigger.current?.focus() } }
+    document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape)
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape) }
+  }, [agentMenuOpen])
   const [selectedModel, setSelectedModel] = useState<ModelOption | undefined>(() => availableModels.find(({ id, providerId }) => id === session.model?.id && providerId === session.model?.providerId))
   const [selectedVariant, setSelectedVariant] = useState(session.model?.variant ?? "")
   const approvalHeading = useRef<HTMLHeadingElement>(null), scrollArea = useRef<HTMLDivElement>(null), atBottom = useRef(true), fileInput = useRef<HTMLInputElement>(null)
@@ -143,7 +163,7 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
     setError("")
   }, [onUnauthorized, session.id])
 
-  useEffect(() => { void load().catch(() => setError("Conversation is unavailable.")) }, [connectionEpoch, load])
+  useEffect(() => { void load().catch(() => setError(t("Conversation is unavailable."))) }, [connectionEpoch, load])
   useEffect(() => { setWorking(status !== "idle") }, [status])
   useEffect(() => {
     if (!modelMenuOpen) { setModelQuery(""); return }
@@ -222,7 +242,7 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
     if (event.type === "session.diff" && event.diff) setChanges(event.diff.map(toFileChange))
     if (event.type === "session.status") setWorking(event.status !== "idle")
     if (event.type === "session.idle") { setWorking(false); setMessages((current) => current.map((message) => message.status === "streaming" ? { ...message, status: "completed" } : message)) }
-    if (event.type === "session.error") { setWorking(false); setMessages((current) => current.map((message, index) => index === current.length - 1 && message.status === "streaming" ? { ...message, status: "failed" } : message)); setError("OpenCode reported an error for this session.") }
+    if (event.type === "session.error") { setWorking(false); setMessages((current) => current.map((message, index) => index === current.length - 1 && message.status === "streaming" ? { ...message, status: "failed" } : message)); setError(t("OpenCode reported an error for this session.")) }
     if (event.type === "permission.requested" && event.requestId && event.action) setPermission({ requestId: event.requestId, action: event.action, resources: event.resources ?? [] })
     if (event.type === "permission.resolved") setPermission((current) => event.requestId === current?.requestId ? undefined : current)
   }, [event, session.id])
@@ -242,7 +262,7 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
     const selected = Array.from(changeEvent.target.files ?? []).slice(0, Math.max(0, 4 - uploads.length))
     changeEvent.target.value = ""
     if (!selected.length || uploading) return
-    if (selected.some((file) => file.size > 10 * 1024 * 1024)) { setError("Each attachment must be 10 MB or smaller."); return }
+    if (selected.some((file) => file.size > 10 * 1024 * 1024)) { setError(t("Each attachment must be 10 MB or smaller.")); return }
     setUploading(true); setError("")
     try {
       const added: PendingUpload[] = []
@@ -261,10 +281,10 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
       setUploads((current) => [...current, ...added].slice(0, 4))
     } catch (uploadError) {
       setError(uploadError instanceof Error && uploadError.message === "too-large"
-        ? "The attachment is too large."
+        ? t("The attachment is too large.")
         : uploadError instanceof Error && uploadError.message === "unsupported"
-          ? "This file type is not supported."
-          : "The attachment could not be uploaded.")
+          ? t("This file type is not supported.")
+          : t("The attachment could not be uploaded."))
     } finally { setUploading(false) }
   }
 
@@ -279,7 +299,7 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
       const response = await fetch(`/api/v1/sessions/${encodeURIComponent(session.id)}/actions`, { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ type, ...(text ? { text } : {}), ...(attached.length ? { uploadIds: attached.map(({ id }) => id) } : {}), ...selection }) })
       if (response.status === 401) return onUnauthorized(); if (!response.ok) throw new Error("proposal-failed")
       const body = await response.json() as { actionId: string }; setProposal({ actionId: body.actionId, type, ...(text ? { text } : {}), ...(attached.length ? { uploads: attached } : {}), ...(selectedAgent ? { agent: selectedAgent } : {}), ...(selectedModel ? { model: selectedModel } : {}), ...(selectedModel && selectedVariant ? { variant: selectedVariant } : {}) })
-    } catch { setError("The action could not be proposed.") } finally { setBusy(false) }
+    } catch { setError(t("The action could not be proposed.")) } finally { setBusy(false) }
   }
   const propose = (formEvent: FormEvent) => { formEvent.preventDefault(); const text = draft.trim(); if (text || uploads.length) void requestProposal("session.prompt", text, uploads) }
   const decide = async (decision: "approve" | "deny") => {
@@ -290,14 +310,14 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
       if (decision === "approve" && proposal.type === "session.prompt") {
         const parts: MessagePart[] = [
           ...(proposal.text ? [{ type: "markdown" as const, content: proposal.text }] : []),
-          ...(proposal.uploads ?? []).map(({ name }) => ({ type: "status" as const, content: `Attached: ${name}` })),
+          ...(proposal.uploads ?? []).map(({ name }) => ({ type: "status" as const, content: tf("Attached: {name}", { name }) })),
         ]
         setMessages((current) => [...current, { id: `local-${proposal.actionId}`, role: "user", createdAt: Date.now(), status: "sending", parts }])
         setWorking(true); setDraft(""); setUploads([]); atBottom.current = true
       }
       if (decision === "approve" && proposal.type === "session.abort") setWorking(false)
       setProposal(undefined)
-    } catch { setError("The action is no longer available.") } finally { setBusy(false) }
+    } catch { setError(t("The action is no longer available.")) } finally { setBusy(false) }
   }
   const replyPermission = async (reply: "once" | "reject") => {
     if (!permission || busy) return; setBusy(true); setError("")
@@ -307,7 +327,7 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
     } catch (failure) { setError(controlErrorMessage(failure)) } finally { setBusy(false) }
   }
 
-  const model = selectedModel ? `${selectedModel.providerName} / ${selectedModel.name}` : session.model ? `${session.model.providerId} / ${session.model.id}` : "Model unavailable"
+  const model = selectedModel ? `${selectedModel.providerName} / ${selectedModel.name}` : session.model ? `${session.model.providerId} / ${session.model.id}` : t("Model unavailable")
   const effortVariants = selectedModel?.variants ?? []
   const filteredModels = availableModels.filter((item) => `${item.name} ${item.id} ${item.providerName} ${item.providerId}`.toLocaleLowerCase().includes(modelQuery.trim().toLocaleLowerCase()))
   const modelGroups = Array.from(new Set(filteredModels.map((item) => item.providerId))).map((providerId) => ({ providerId, items: filteredModels.filter((item) => item.providerId === providerId) }))
@@ -316,7 +336,7 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
     part.type === "tool" ? [{ ...part, createdAt: message.createdAt }] : []
   )).reverse()
   return <section className="page active conversation-page"><div className="chat">
-    <div className="chathead"><button className="backbtn" type="button" onClick={onBack} aria-label={t("Back to dashboard")}><Icon name="arrow-left" /></button><div className="grow truncate"><strong className="truncate">{session.title}</strong><div className="tiny muted"><span className={working ? "dot" : "session-glyph"} /> {working ? t("Working") : t("Idle")} · {selectedAgent || session.agent || "OpenCode"}</div></div><button ref={modelTrigger} className="btn modelbtn" type="button" title={model} aria-label={t("Choose model")} aria-controls="model-selector" aria-expanded={modelMenuOpen} onClick={() => setModelMenuOpen((open) => !open)}><span>{compactModelName(selectedModel?.name ?? session.model?.id ?? "Model")}</span><Icon name="chevron-down" /></button><button className="iconbtn danger-text" type="button" onClick={onDelete} aria-label={t("Delete session")}><Icon name="close" /></button></div>
+    <div className="chathead"><button className="backbtn" type="button" onClick={onBack} aria-label={t("Back to dashboard")}><Icon name="arrow-left" /></button><div className="grow truncate"><strong className="truncate">{session.title}</strong><div className="tiny muted"><span className={working ? "dot" : "session-glyph"} /> {working ? t("Working") : t("Idle")} · {selectedAgent || session.agent || "OpenCode"}</div></div><button ref={modelTrigger} className="btn modelbtn" type="button" title={model} aria-label={t("Choose model")} aria-controls="model-selector" aria-expanded={modelMenuOpen} onClick={() => setModelMenuOpen((open) => !open)}><span>{compactModelName(selectedModel?.name ?? session.model?.id ?? t("Model"))}</span><Icon name="chevron-down" /></button><button className="iconbtn danger-text" type="button" onClick={onDelete} aria-label={t("Delete session")}><Icon name="close" /></button></div>
     <div ref={modelMenu} id="model-selector" className="soft mb model-menu" hidden={!modelMenuOpen} role="region" aria-labelledby="model-selector-title">
       <div className="model-menu__header"><strong id="model-selector-title">{t("Available Models")}</strong><button className="iconbtn" type="button" aria-label={t("Close model selector")} onClick={() => { setModelMenuOpen(false); modelTrigger.current?.focus() }}><Icon name="close" /></button></div>
       <label className="model-menu__search"><span className="sr-only">{t("Search models")}</span><input ref={modelSearch} className="input" type="search" placeholder={t("Search models…")} value={modelQuery} onChange={(event) => setModelQuery(event.target.value)} /></label>
@@ -325,29 +345,29 @@ export function Conversation({ session, onBack, onUnauthorized, onStepUp, event,
         return <button className={`navbtn model-option ${active ? "active" : ""}`} type="button" title={`${item.name} · ${item.providerName}`} aria-pressed={active} key={`${item.providerId}/${item.id}`} onClick={() => { setSelectedModel(item); setSelectedVariant(item.variants.includes(selectedVariant) ? selectedVariant : item.variants.includes("medium") ? "medium" : ""); setModelMenuOpen(false); modelTrigger.current?.focus() }}><span className="model-option__text"><span className="model-option__name">{item.name}</span><small>{item.providerName}</small></span>{active && <Icon name="check" />}</button>
       })}</section>)}{filteredModels.length === 0 && <p className="tiny muted model-menu__empty">{availableModels.length === 0 ? t("No connected models were reported by OpenCode.") : t("No models found.")}</p>}</div>
     </div>
-    <div className="flex tiny mb conversation-pills"><span className="pill">Effort {selectedVariant || t("default")}</span><span className="pill">{totalTokens === undefined ? "Tokens unavailable" : `${totalTokens.toLocaleString()} tokens`}</span><span className="pill">{session.cost === undefined ? "Cost unavailable" : `$${session.cost.toFixed(4)}`}</span><span className="pill">{session.parentId ? t("Subagent") : t("Primary session")}</span></div>
-    <div className="tabs" role="tablist" aria-label="Session views">{([['chat','Conversation'],['changes','Changes'],['agents','Agents'],['logs','Logs']] as const).map(([id,label]) => <button className={`tab ${activeTab === id ? "active" : ""}`} role="tab" aria-selected={activeTab === id} type="button" key={id} onClick={() => setActiveTab(id)}>{label}</button>)}</div>
+    <div className="flex tiny mb conversation-pills"><span className="pill">{t("Effort")} {selectedVariant ? stateLabel(selectedVariant) : t("default")}</span><span className="pill">{totalTokens === undefined ? t("Tokens unavailable") : `${totalTokens.toLocaleString()} ${t("tokens")}`}</span><span className="pill">{session.cost === undefined ? t("Cost unavailable") : `$${session.cost.toFixed(4)}`}</span><span className="pill">{session.parentId ? t("Subagent") : t("Primary session")}</span></div>
+    <div className="tabs" role="tablist" aria-label={t("Session views")}>{([['chat','Conversation'],['changes','Changes'],['agents','Agents'],['logs','Logs']] as const).map(([id,label]) => <button className={`tab ${activeTab === id ? "active" : ""}`} role="tab" aria-selected={activeTab === id} type="button" key={id} onClick={() => setActiveTab(id)}>{t(label)}</button>)}</div>
     <div className="conversation-content" key={activeTab}>
       {activeTab === "chat" && <div className="tabpane active conversation-stream" ref={scrollArea} onScroll={onScroll} role="log" aria-live="polite" aria-relevant="additions text">
         {messages.length === 0 && !error && <div className="empty-state"><strong>{t("No messages in this session yet.")}</strong><span>{t("Ask OpenCode to begin.")}</span></div>}
         {messages.map((message) => <ChatMessageView message={message} onOpenFile={openAttachment} key={message.id} />)}
-        {working && <p className="working" role="status"><span className="dot" />{t("OpenCode is working…")}</p>}{error && <p className="conversation-error" role="alert">{error}</p>}
+        {working && <p className="working" role="status"><span className="dot" />{t("OpenCode is working…")}</p>}{error && <p className="conversation-error" role="alert">{t(error)}</p>}
       </div>}
       {activeTab === "changes" && <div className="tabpane active conversation-scroll">{changes.length ? <><ChangeSummary changes={changes} /><div className="diff-stack">{changes.map((change) => <DiffViewer {...change} key={`${change.file}-${change.status}`} />)}</div></> : <div className="card empty-state"><strong>{t("No file changes")}</strong><span>{t("This session has no structured diff data.")}</span></div>}</div>}
-      {activeTab === "agents" && <div className="tabpane active conversation-scroll"><div className="card"><div className="row"><span className={working ? "dot" : "session-glyph"} /><div className="grow"><strong>{session.agent ?? "OpenCode"}</strong><div className="tiny muted">{model} · {session.parentId ? "Child session" : "Main agent"}</div></div><span className="pill">{working ? t("Working") : t("Idle")}</span></div></div><div className="card"><strong>{t("Tasks")}</strong>{todos.length === 0 ? <div className="empty-state compact"><span>{t("No tasks reported by OpenCode.")}</span></div> : todos.map((todo, index) => <div className="row" key={`${todo.content}-${index}`}><span className={todo.status === "completed" ? "session-glyph" : todo.status === "in_progress" ? "dot" : "session-glyph"} /><div className="grow"><span>{todo.content}</span><div className="tiny muted">{todo.priority} priority</div></div><span className="pill">{todo.status.replaceAll("_", " ")}</span></div>)}</div></div>}
-      {activeTab === "logs" && <div className="tabpane active conversation-scroll"><div className="card"><strong>{t("Tool activity")}</strong>{activity.length === 0 ? <div className="empty-state compact"><strong>{t("No tool activity")}</strong><span>{t("This session has not reported structured tool events.")}</span></div> : activity.map((item) => <div className="row" key={`${item.id ?? item.name}-${item.createdAt}`}><div className="grow"><span className="tool-command">{item.title ?? item.name}</span><div className="tiny muted">{new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(item.createdAt))}</div></div><span className="pill">{item.status}</span></div>)}</div></div>}
+      {activeTab === "agents" && <div className="tabpane active conversation-scroll"><div className="card"><div className="row"><span className={working ? "dot" : "session-glyph"} /><div className="grow"><strong>{session.agent ?? "OpenCode"}</strong><div className="tiny muted">{model} · {session.parentId ? t("Child session") : t("Main agent")}</div></div><span className="pill">{working ? t("Working") : t("Idle")}</span></div></div><div className="card"><strong>{t("Tasks")}</strong>{todos.length === 0 ? <div className="empty-state compact"><span>{t("No tasks reported by OpenCode.")}</span></div> : todos.map((todo, index) => <div className="row" key={`${todo.content}-${index}`}><span className={todo.status === "completed" ? "session-glyph" : todo.status === "in_progress" ? "dot" : "session-glyph"} /><div className="grow"><span>{todo.content}</span><div className="tiny muted">{stateLabel(todo.priority)} · {t("Priority")}</div></div><span className="pill">{stateLabel(todo.status)}</span></div>)}</div></div>}
+      {activeTab === "logs" && <div className="tabpane active conversation-scroll"><div className="card"><strong>{t("Tool activity")}</strong>{activity.length === 0 ? <div className="empty-state compact"><strong>{t("No tool activity")}</strong><span>{t("This session has not reported structured tool events.")}</span></div> : activity.map((item) => <div className="row" key={`${item.id ?? item.name}-${item.createdAt}`}><div className="grow"><span className="tool-command">{item.title ?? item.name}</span><div className="tiny muted">{new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(item.createdAt))}</div></div><span className="pill">{stateLabel(item.status)}</span></div>)}</div></div>}
       {newMessages && activeTab === "chat" && <button className="new-messages" type="button" onClick={scrollToLatest}>{t("New messages ↓")}</button>}
     </div>
     {activeTab === "chat" && <form className="composer" onSubmit={propose}>
       <div className="prompt-controls">
-        <label className="agent-control"><span>{t("Agent")}</span><select value={selectedAgent} onChange={(event) => setSelectedAgent(event.target.value)} aria-label="Agent for the next message"><option value="">{t("Session default")}</option>{availableAgents.map((agent) => <option value={agent.name} key={agent.name}>{agent.name}{agent.mode === "subagent" ? " · subagent" : ""}</option>)}</select></label>
-        <div className="effort-control" aria-label="Reasoning effort"><span>{t("Effort")}</span><div>{effortVariants.length ? effortVariants.map((variant) => <button className={selectedVariant === variant ? "active" : ""} type="button" aria-pressed={selectedVariant === variant} onClick={() => setSelectedVariant(variant)} key={variant}>{variant}</button>) : <button className="active" type="button" disabled>{t("default")}</button>}</div></div>
+        <div ref={agentControl} className="agent-control"><span>{t("Agent")}</span><button ref={agentTrigger} className="agent-trigger" type="button" aria-label={t("Agent for the next message")} aria-expanded={agentMenuOpen} aria-controls="agent-options" onClick={() => setAgentMenuOpen(!agentMenuOpen)}><span>{selectedAgent || t("Session default")}</span><Icon name="chevron-down" /></button><div id="agent-options" className="agent-options" hidden={!agentMenuOpen} role="group" aria-label={t("Agent")}>{[{ name: "", description: t("Session default") }, ...availableAgents].map(agent => <button type="button" className={`agent-option ${selectedAgent === agent.name ? "active" : ""}`} aria-pressed={selectedAgent === agent.name} key={agent.name} onClick={() => { setSelectedAgent(agent.name); setAgentMenuOpen(false); agentTrigger.current?.focus() }}><span>{agent.name || t("Session default")}{agent.name && agent.description && <small>{agent.description}</small>}</span>{selectedAgent === agent.name && <Icon name="check" />}</button>)}</div></div>
+        <div className="effort-control" aria-label={t("Reasoning effort")}><span>{t("Effort")}</span><div>{effortVariants.length ? effortVariants.map((variant) => <button className={selectedVariant === variant ? "active" : ""} type="button" aria-pressed={selectedVariant === variant} onClick={() => setSelectedVariant(variant)} key={variant}>{stateLabel(variant)}</button>) : <button className="active" type="button" disabled>{t("default")}</button>}</div></div>
       </div>
-      {uploads.length > 0 && <div className="composer-attachments" aria-label="Attachments ready to send">{uploads.map((upload) => <span className="composer-attachment" key={upload.id}><Icon name="file" /><span><strong>{upload.name}</strong><small>{Math.max(1, Math.ceil(upload.size / 1024)).toLocaleString()} KB</small></span><button type="button" aria-label={`Remove ${upload.name}`} onClick={() => setUploads((current) => current.filter(({ id }) => id !== upload.id))}><Icon name="close" /></button></span>)}</div>}
-      <div className="composer-row"><input ref={fileInput} className="sr-only" type="file" multiple accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cc,.cpp,.h,.hpp,.css,.csv,.log,.sh,.sql,.toml,.xml,.yaml,.yml,.png,.jpg,.jpeg,.webp,.pdf" onChange={(event) => void uploadFiles(event)} /><button className="iconbtn" type="button" disabled={busy || uploading || uploads.length >= 4} title={uploads.length >= 4 ? "Maximum of 4 attachments" : t("Attach files")} aria-label={t("Attach files")} onClick={() => fileInput.current?.click()}>{uploading ? <span className="button-progress" /> : <Icon name="plus" />}</button><label className="sr-only" htmlFor="prompt">{t("Ask OpenCode")}</label><textarea id="prompt" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("Ask OpenCode...")} maxLength={8_000} rows={1} /><button className="iconbtn sendbtn" type="submit" disabled={busy || uploading || (!draft.trim() && uploads.length === 0)} aria-label={t("Review prompt")}><Icon name="send" /></button></div>
+      {uploads.length > 0 && <div className="composer-attachments" aria-label={t("Attachments ready to send")}>{uploads.map((upload) => <span className="composer-attachment" key={upload.id}><Icon name="file" /><span><strong>{upload.name}</strong><small>{Math.max(1, Math.ceil(upload.size / 1024)).toLocaleString()} KB</small></span><button type="button" aria-label={tf("Remove {name}", { name: upload.name })} onClick={() => setUploads((current) => current.filter(({ id }) => id !== upload.id))}><Icon name="close" /></button></span>)}</div>}
+      <div className="composer-row"><input ref={fileInput} className="sr-only" type="file" multiple accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cc,.cpp,.h,.hpp,.css,.csv,.log,.sh,.sql,.toml,.xml,.yaml,.yml,.png,.jpg,.jpeg,.webp,.pdf" onChange={(event) => void uploadFiles(event)} /><button className="iconbtn" type="button" disabled={busy || uploading || uploads.length >= 4} title={uploads.length >= 4 ? t("Maximum of 4 attachments") : t("Attach files")} aria-label={t("Attach files")} onClick={() => fileInput.current?.click()}>{uploading ? <span className="button-progress" /> : <Icon name="plus" />}</button><label className="sr-only" htmlFor="prompt">{t("Ask OpenCode")}</label><textarea id="prompt" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("Ask OpenCode...")} maxLength={8_000} rows={1} /><button className="iconbtn sendbtn" type="submit" disabled={busy || uploading || (!draft.trim() && uploads.length === 0)} aria-label={t("Review prompt")}><Icon name="send" /></button></div>
     </form>}
   </div>
-  {proposal && <section className="approval" role="dialog" aria-modal="true" aria-labelledby="approval-title"><small>{t("PERMISSION REQUIRED")}</small><h2 id="approval-title" ref={approvalHeading} tabIndex={-1}>{proposal.type === "session.prompt" ? t("Send this prompt to OpenCode?") : t("Stop the current OpenCode run?")}</h2><blockquote>{proposal.type === "session.prompt" ? <>{proposal.text && <span>{proposal.text}</span>}<span className="approval-attachment">Agent: {proposal.agent ?? "session default"} · Model: {proposal.model?.name ?? "session default"} · Effort: {proposal.variant ?? t("default")}</span>{proposal.uploads?.map(({ id, name, size }) => <span className="approval-attachment" key={id}>{name} · {Math.max(1, Math.ceil(size / 1024)).toLocaleString()} KB</span>)}</> : "The active generation or tool execution will be interrupted."}</blockquote><div><button type="button" disabled={busy} onClick={() => void decide("deny")}>{t("Deny")}</button><button className="primary" type="button" disabled={busy} onClick={() => void decide("approve")}>{proposal.type === "session.prompt" ? t("Send") : t("Stop")}</button></div></section>}
-  {permission && !proposal && <section className="approval" role="dialog" aria-modal="true" aria-labelledby="permission-title"><small>{t("OPENCODE PERMISSION")}</small><h2 id="permission-title" ref={approvalHeading} tabIndex={-1}>Allow {permission.action}?</h2><div className="permission-resources">{permission.resources.length === 0 ? "No resource details provided." : permission.resources.join("\n")}</div><div><button type="button" disabled={busy} onClick={() => void replyPermission("reject")}>{t("Deny")}</button><button className="primary" type="button" disabled={busy} onClick={() => void replyPermission("once")}>{t("Allow once")}</button></div></section>}
+  {proposal && <section className="approval" role="dialog" aria-modal="true" aria-labelledby="approval-title"><small>{t("PERMISSION REQUIRED")}</small><h2 id="approval-title" ref={approvalHeading} tabIndex={-1}>{proposal.type === "session.prompt" ? t("Send this prompt to OpenCode?") : t("Stop the current OpenCode run?")}</h2><blockquote>{proposal.type === "session.prompt" ? <>{proposal.text && <span>{proposal.text}</span>}<span className="approval-attachment">{t("Agent")}: {proposal.agent ?? t("Session default")} · {t("Model")}: {proposal.model?.name ?? t("Session default")} · {t("Effort")}: {proposal.variant ? stateLabel(proposal.variant) : t("default")}</span>{proposal.uploads?.map(({ id, name, size }) => <span className="approval-attachment" key={id}>{name} · {Math.max(1, Math.ceil(size / 1024)).toLocaleString()} KB</span>)}</> : t("The active generation or tool execution will be interrupted.")}</blockquote><div><button type="button" disabled={busy} onClick={() => void decide("deny")}>{t("Deny")}</button><button className="primary" type="button" disabled={busy} onClick={() => void decide("approve")}>{proposal.type === "session.prompt" ? t("Send") : t("Stop")}</button></div></section>}
+  {permission && !proposal && <section className="approval" role="dialog" aria-modal="true" aria-labelledby="permission-title"><small>{t("OPENCODE PERMISSION")}</small><h2 id="permission-title" ref={approvalHeading} tabIndex={-1}>{tf("Allow {action}?", { action: permission.action })}</h2><div className="permission-resources">{permission.resources.length === 0 ? t("No resource details provided.") : permission.resources.join("\n")}</div><div><button type="button" disabled={busy} onClick={() => void replyPermission("reject")}>{t("Deny")}</button><button className="primary" type="button" disabled={busy} onClick={() => void replyPermission("once")}>{t("Allow once")}</button></div></section>}
   </section>
 }

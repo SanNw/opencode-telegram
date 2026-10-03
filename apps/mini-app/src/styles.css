@@ -104,7 +104,50 @@ button,a.btn,select,input,textarea,summary{transition:background-color var(--mot
 :root[data-theme="light"] .tool-activity--error{border-color:#dca0ae}
 .mobileNav button{min-width:0}
 .mobileNav small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The conversation owns a bounded viewport on both sides of the breakpoint. */
+@media(min-width:701px){.sidebar{top:calc(58px + 20px)}}
+.conversation-shell{height:calc(var(--app-visible-height,100dvh) - 40px);min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.conversation-shell>.topbar{flex:0 0 58px}
+.conversation-shell>.layout{flex:1;min-height:0;height:auto;overflow:hidden}
+.conversation-shell .main--conversation{height:100%;min-height:0;overflow:hidden}
+.conversation-shell .conversation-page{height:100%;min-height:0}
+.conversation-shell .sidebar{position:static;height:100%;min-height:0;overflow-y:auto}
+.conversation-shell .chat{min-height:0}
+.composer{position:relative}
+.prompt-controls{overflow:visible;flex-wrap:wrap}
+.agent-control{min-width:0;position:relative}
+.agent-trigger{height:34px;max-width:190px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--border);border-radius:10px;background:var(--panel);font-size:12px;font-weight:500}
+.agent-trigger>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-trigger .ui-icon{width:14px;height:14px}
+.agent-options{position:absolute;left:0;bottom:calc(100% + 8px);z-index:5;width:min(280px,calc(100vw - 52px));max-height:min(280px,40dvh);overflow-y:auto;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:0 12px 32px #0005}
+.agent-options[hidden]{display:none}
+.agent-option{width:100%;display:flex;align-items:center;gap:8px;padding:9px;border:0;border-radius:8px;background:transparent;text-align:left;font-size:12px}
+.agent-option>span{min-width:0;flex:1;overflow-wrap:anywhere}
+.agent-option small{display:block;margin-top:3px;font-size:11px;color:var(--muted);font-weight:400}
+.agent-option.active,.agent-option:hover{background:var(--accent-bg)}
+.file-attachment strong{font-size:12px;font-weight:500}
+.file-attachment small,.image-attachment--unavailable{font-size:11px;font-weight:400;overflow-wrap:anywhere}
+@media(max-width:700px){.conversation-shell{height:var(--app-visible-height,100dvh)}.conversation-shell>.layout{height:auto}.conversation-shell .main--conversation{padding-bottom:max(10px,env(safe-area-inset-bottom))}}
+@media(max-height:500px){.conversation-shell{margin-top:0;margin-bottom:0;height:var(--app-visible-height,100dvh);border-radius:0}.conversation-shell>.topbar{flex-basis:44px;height:44px;padding-top:3px;padding-bottom:3px}.conversation-shell .main--conversation{padding:6px 12px}.conversation-page .chathead{margin-bottom:4px}.conversation-page .tabs{margin-bottom:4px}.conversation-page .conversation-pills{margin-bottom:4px}.conversation-page .pill{padding:2px 6px;font-size:10px}.composer{margin-top:5px;padding:6px}.prompt-controls{padding-bottom:4px}.agent-control>span,.effort-control>span{display:none}.agent-trigger,.effort-control button{height:30px}.composer textarea{min-height:36px;padding:6px 5px}.composer .iconbtn{height:36px;width:36px}}
 .theme-selector{min-width:0;margin:0;padding:0;border:0}
+/* Short landscape viewports must prioritize the transcript, not desktop chrome. */
+@media(orientation:landscape) and (max-height:500px){
+  .conversation-shell>.topbar{display:none}
+  .conversation-shell>.layout{grid-template-columns:56px minmax(0,1fr)}
+  .conversation-shell .sidebar{padding:6px;gap:4px}
+  .conversation-shell .sidebar button{justify-content:center;padding:0;min-height:44px}
+  .conversation-shell .sidebar small{display:none}
+  .conversation-page .conversation-pills{display:none}
+  .conversation-page .chathead{gap:6px;margin-bottom:3px}
+  .conversation-page .chathead .backbtn,.conversation-page .chathead .iconbtn{width:36px;height:36px}
+  .conversation-page .chathead .modelbtn{min-height:36px;font-size:12px;max-width:180px}
+  .conversation-page .tab{min-height:30px;padding:0 9px;font-size:12px}
+  .prompt-controls{flex-wrap:nowrap;min-width:0;gap:6px}
+  .effort-control{min-width:0;flex:1}
+  .effort-control>div{min-width:0;overflow-x:auto;scrollbar-width:none}
+  .effort-control button{flex:none;padding:0 8px}
+  .agent-trigger{max-width:150px}
+}
 .theme-selector legend{padding:0;margin-bottom:10px;font-size:12px;font-weight:600;color:var(--muted)}
 .theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:440px}
 .theme-choice{position:relative;min-width:0;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel);cursor:pointer;transition:background-color var(--motion-fast) ease,border-color var(--motion-fast) ease}

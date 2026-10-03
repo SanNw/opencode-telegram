@@ -15,6 +15,30 @@ async function fixture() {
   return { base, workspace, store, service: new AttachmentService(store, workspace) }
 }
 
+test("inline image messages are byte-validated, deduplicated and served through owner-bound opaque IDs", async () => {
+  const { base, store, service } = await fixture()
+  try {
+    const image = Buffer.from([255, 216, 255, 224, 0, 16, 74, 70, 73, 70])
+    const dataUrl = `data:image/jpeg;base64,${image.toString("base64")}`
+    const input = { userId: "owner", sessionId: "session-1", sourcePath: "", filename: "IMG_2991.JPEG", dataUrl }
+    const registered = await service.register(input)
+    assert(registered)
+    assert.equal(registered.preview, "image")
+    assert.match(registered.attachmentId, /^att_[A-Za-z0-9_-]{32}$/)
+    assert.equal((await service.register(input))?.attachmentId, registered.attachmentId)
+    assert.deepEqual((await service.read("owner", registered.attachmentId)).content, image)
+    await assert.rejects(service.read("other-owner", registered.attachmentId), /not found/)
+    assert.equal(store.getInlineAttachment(registered.attachmentId, "owner", Math.floor(Date.now() / 1000) + 86401), undefined)
+    assert.equal(JSON.stringify(registered).includes("base64"), false)
+    for (const bad of [dataUrl.replace("image/jpeg", "image/png"), "data:image/jpeg;base64,PHNjcmlwdD4=", "data:image/svg+xml;base64,PHN2Zz4=", "https://evil.example/image.jpg", "data:image/jpeg;base64,@@@="]) {
+      assert.equal(await service.register({ ...input, dataUrl: bad }), undefined)
+    }
+  } finally {
+    store.close()
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
 test("opaque attachment handles deliver a validated workspace image only to their owner", async () => {
   const { base, workspace, store, service } = await fixture()
   try {

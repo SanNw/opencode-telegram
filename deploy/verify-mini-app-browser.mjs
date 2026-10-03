@@ -31,6 +31,8 @@ const server = http.createServer(async (req, res) => {
     calls.push({ path: url.pathname, method: req.method, body });
     if (url.pathname.endsWith('/events')) { res.writeHead(200, { 'content-type': 'text/event-stream' }); res.write(': mock connected\n\n'); return; }
     const json = (data, status = 200) => {
+      for (const provider of data.providers ?? []) for (const model of provider.models ?? []) model.variants = ['high','low','max','medium','none','xhigh'];
+      if (data.messages) data.messages.push({ id: 'image-fixture', role: 'user', createdAt: Date.now(), completedAt: Date.now(), text: '', content: [{ id: 'image-part', type: 'file', mime: 'image/png', filename: 'phone-photo.png', attachmentId: `att_${'c'.repeat(32)}`, preview: 'image', size: 68 }, { id: 'file-part', type: 'file', mime: 'text/plain', filename: 'very-long-filename-'.repeat(12) + '.txt', attachmentId: `att_${'a'.repeat(32)}`, preview: 'text', size: 30 }] });
       if (data.mutability) data.mcpServers = ['connected', 'needs_auth', 'disabled'].map((status, i) => ({ name: i === 0 ? 'Long-MCP-server-name-'.repeat(12) : `Fixture MCP ${i}`, status, enabled: status !== 'disabled', configType: 'local' }));
       res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(data));
     };
@@ -41,7 +43,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.endsWith('/sessions/s1/diff')) return json({ files: [] });
     if (url.pathname.endsWith('/capabilities')) return json({ version: 1, capabilities: {} });
     if (url.pathname.endsWith('/catalog')) return json({ providers: ['Local fixture', 'Router fixture'].map((name, provider) => ({ id: `provider-${provider}`, name, connected: true, models: Array.from({ length: 10 }, (_, i) => ({ id: `model-${i}`, name: i === 0 ? 'Very long model name '.repeat(15) : `Fixture Model ${i}`, status: 'active', limits: { context: 4096, output: 1024 }, variants: ['low', 'medium', 'high'] })) })), skills: [], plugins: [], mcpServers: [] });
-    if (url.pathname.endsWith('/agents')) return json({ agents: [] });
+    if (url.pathname.endsWith('/agents')) return json({ agents: [{ name: 'Builder fixture', description: 'Build and review fixture changes', mode: 'primary', native: true }, { name: 'Reviewer fixture', mode: 'subagent', native: true }] });
     if (url.pathname.endsWith('/devices')) return json({ devices: [] });
     if (url.pathname.endsWith('/audit')) return json({ events: [] });
     if (url.pathname.endsWith('/usage')) return json({ totals: { messages: 0, input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, cost: 0 }, daily: [], breakdown: {}, collection: { running: false, failed: false, lastSyncedAt: null } });
@@ -50,6 +52,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.endsWith('/vcs/diff')) return json({ files: [] });
     if (url.pathname.endsWith('/vcs')) return json({ branch: 'main', upstream: 'origin/main', ahead: 1, behind: 0, files: [], commits: [] });
     if (url.pathname.endsWith('/artifacts')) return json({ artifacts: url.searchParams.get('category') === 'images' ? [] : [artifact] });
+    if (url.pathname.endsWith(`att_${'c'.repeat(32)}`)) { res.writeHead(200, { 'content-type': 'image/png' }); return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=', 'base64')); }
     if (url.pathname.includes('/attachments/')) { res.writeHead(200, { 'content-type': 'text/markdown' }); return res.end('# Isolated browser artifact'); }
     if (url.pathname.endsWith('/security/recovery/setup')) { configured = true; return json({ recoveryKey: 'rk_BROWSER_FIXTURE_NOT_A_REAL_SECRET' }); }
     if (url.pathname.endsWith('/security/step-up')) { privileged = true; privilegedExpiresAt = fixtureNow() + 300; return json({ expiresAt: privilegedExpiresAt }); }
@@ -134,6 +137,31 @@ try {
   await click('Images'); await wait(text('No images yet')); evidence.push({ check: 'artifact preview, modal Tab containment/focus restore, empty filter', passed: true });
   await click('Git'); await wait(text('Upstream: origin/main')); evidence.push({ check: 'Git metadata and diff', passed: true });
   await click('Open'); await wait(text('Paragraph 140:')); await viewport(390, 470, true);
+  await wait("document.querySelector('.image-attachment img')?.naturalWidth>0");
+  assert.match(await evaluate("document.querySelector('.image-attachment img').getAttribute('src')"), /^\/api\/v1\/attachments\/att_/);
+  assert.ok(await evaluate("parseFloat(getComputedStyle(document.querySelector('.file-attachment strong')).fontSize)<=12"));
+  evidence.push({ check: 'chat image loads through opaque same-origin URL and long attachment filename uses compact typography', passed: true });
+  for (const [width, height] of [[390,844],[844,390],[844,300],[1280,500],[900,700],[390,470]]) {
+    await viewport(width, height, width <= 844);
+    await evaluate('window.dispatchEvent(new Event("resize"))'); await pause(160);
+    const bounds = await evaluate("(()=>{const c=document.querySelector('.composer').getBoundingClientRect(),s=document.querySelector('.conversation-stream'),n=document.querySelector('.sidebar'),b=n.querySelector('button:last-child').getBoundingClientRect();return {top:c.top,bottom:c.bottom,height:innerHeight,scroll:document.documentElement.scrollHeight,view:document.documentElement.clientHeight,chatHeight:s.clientHeight,settingsBottom:b.bottom,navBottom:n.getBoundingClientRect().bottom}})()");
+    assert.ok(bounds.top>=0 && bounds.bottom<=height+1 && bounds.chatHeight>20 && bounds.scroll<=bounds.view+1, JSON.stringify(bounds));
+    if (width>height && height<=500) assert.ok(bounds.chatHeight>=height*0.4, `Transcript must occupy at least 40% of short landscape viewport: ${JSON.stringify(bounds)}`);
+    if (width>700) assert.ok(Math.abs(bounds.settingsBottom-bounds.navBottom)<=12, JSON.stringify(bounds));
+    if (width===844) await screenshot('chat-landscape');
+  }
+  await evaluate("document.querySelector('[aria-label=\"Agent for the next message\"]').click()");
+  await wait("!document.getElementById('agent-options').hidden");
+  await screenshot('chat-agent-selector');
+  assert.equal(await evaluate("document.querySelectorAll('.agent-control select').length"), 0);
+  const agents = await evaluate("document.querySelectorAll('.agent-option').length");
+  assert.ok(agents>1);
+  await evaluate("document.querySelectorAll('.agent-option')[1].click()");
+  await wait("document.getElementById('agent-options').hidden");
+  await evaluate("document.querySelector('[aria-label=\"Agent for the next message\"]').click()");
+  await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await wait("document.getElementById('agent-options').hidden");
+  evidence.push({ check: 'composer stays inside viewport across portrait/landscape and desktop resize; sidebar Settings remains bottom-aligned; agent selector uses styled buttons and Escape', passed: true });
   const openModels = async () => { await evaluate("document.querySelector('[aria-label=\"Choose model\"]').click()"); await wait("!document.getElementById('model-selector').hidden"); await pause(240); };
   await openModels();
   assert.equal(await evaluate("document.activeElement.type"), 'search');
@@ -229,6 +257,8 @@ try {
   await screenshot('mobile-keyboard-equivalent');
   await evaluate("window.dispatchEvent(new Event('online'));document.dispatchEvent(new Event('visibilitychange'))"); await pause(300); assert.ok(calls.filter(c => c.path.endsWith('/snapshot')).length >= 2); evidence.push({ check: 'online/visibility lifecycle refresh', passed: true });
   await viewport(1280, 800, false); await click('Home'); await geometry('desktop navigation');
+  await evaluate('window.scrollTo(0,document.documentElement.scrollHeight)'); await pause(160);
+  assert.ok(await evaluate("(()=>{const n=document.querySelector('.sidebar'),b=n.querySelector('button:last-child').getBoundingClientRect();return Math.abs(innerHeight-b.bottom-30)<=3})()"), 'Desktop Settings must remain at the sidebar base after scrolling');
   await screenshot('desktop-home');
   await click('Settings'); await click('Security'); await click('Lock remote access'); await click('Confirm lock'); await wait(text('Remote access locked')); evidence.push({ check: 'lock revokes visible dashboard', passed: true });
   await evaluate("window.Telegram.WebApp.initData='';document.querySelector('.gate-recovery').open=true;document.getElementById('access-recovery-key').value='rk_BROWSER_FIXTURE_NOT_A_REAL_SECRET';document.getElementById('access-recovery-key').form.requestSubmit()");
@@ -246,6 +276,21 @@ try {
     await cdp('Page.reload'); await wait(text('Fixture project'), 300);
     assert.ok(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent.trim()===${JSON.stringify(home)})`), `Navigation language ${locale}`);
     await viewport(320, 844, true); await geometry(`localized navigation ${locale} at 320px`);
+    await evaluate("document.querySelector('.topbar button').click()");
+    await wait("Boolean(document.querySelector('.sessionItem'))");
+    await evaluate("document.querySelector('.sessionItem').click()");
+    await wait("Boolean(document.querySelector('.composer'))");
+    await evaluate("document.querySelector('.modelbtn').click()");
+    await wait("Boolean(document.querySelector('.model-option'))");
+    await evaluate("document.querySelector('.model-option').click()");
+    const chatLabels = { 'en-US': ['Conversation', 'Effort', 'Medium'], 'pt-BR': ['Conversa', 'Esforço', 'Médio'], 'es-ES': ['Conversación', 'Esfuerzo', 'Medio'], 'zh-CN': ['对话', '推理强度', '中'], 'fr-FR': ['Conversation', 'Effort', 'Moyen'], 'hi-IN': ['बातचीत', 'प्रयास', 'मध्यम'] };
+    const localizedChat = await evaluate("({tab:document.querySelector('[role=tab]').textContent.trim(),effort:document.querySelector('.effort-control>span').textContent.trim(),variants:Array.from(document.querySelectorAll('.effort-control button')).map(b=>b.textContent.trim()),title:document.querySelector('.chathead strong').textContent.trim(),width:document.documentElement.scrollWidth,viewport:innerWidth})");
+    assert.equal(localizedChat.tab, chatLabels[locale][0], `Chat tab ${locale}`);
+    assert.equal(localizedChat.effort, chatLabels[locale][1], `Effort label ${locale}`);
+    assert.ok(localizedChat.variants.includes(chatLabels[locale][2]), `Reasoning variant ${locale}`);
+    assert.equal(localizedChat.title, 'Long browser conversation', 'Session title must not be translated');
+    assert.ok(localizedChat.width <= localizedChat.viewport + 1, `Localized chat overflow ${locale}`);
+    evidence.push({ check: `localized chat tabs and reasoning controls ${locale} preserve session title at 320px`, passed: true });
     await cdp('Page.removeScriptToEvaluateOnNewDocument', { identifier: injected.identifier });
   }
   evidence.push({ check: 'all six browser languages select localized navigation without translating project names', passed: true });

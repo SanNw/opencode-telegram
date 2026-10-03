@@ -7,14 +7,14 @@ const statusLabel: Record<FileChangeStatus, string> = { created: t("Created"), m
 
 export type ChangeSummaryProps = { changes: FileChange[]; title?: string; onSelect?: (change: FileChange) => void }
 
-export function ChangeSummary({ changes, title = "Changes made", onSelect }: ChangeSummaryProps) {
+export function ChangeSummary({ changes, title = t("Changes made"), onSelect }: ChangeSummaryProps) {
   const totals = useMemo(() => changes.reduce((result, change) => {
     const counted = countDiffLines(change.diff)
     return { additions: result.additions + (change.additions ?? counted.additions), deletions: result.deletions + (change.deletions ?? counted.deletions) }
   }, { additions: 0, deletions: 0 }), [changes])
 
   return <section className="change-summary">
-    <header className="change-summary__header"><div><strong>{title}</strong><p>{changes.length} {changes.length === 1 ? "file" : "files"} changed · <b>+{totals.additions}</b> <b>−{totals.deletions}</b></p></div></header>
+    <header className="change-summary__header"><div><strong>{title}</strong><p>{changes.length} {t(changes.length === 1 ? "file" : "files")} {t("changed")} · <b>+{totals.additions}</b> <b>−{totals.deletions}</b></p></div></header>
     <div className="change-summary__files">
       {changes.map((change) => {
         const content = <><span className="change-summary__path">{change.file}</span><span className="change-summary__status">{statusLabel[change.status ?? "modified"]}</span></>

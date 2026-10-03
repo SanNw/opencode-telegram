@@ -1,4 +1,4 @@
-import { t } from "../i18n.js"
+import { t, tf } from "../i18n.js"
 import { useMemo, useState } from "react"
 import { Icon } from "./Icon.js"
 import type { DiffData, FileChangeStatus } from "./chat-types.js"
@@ -49,7 +49,7 @@ export function DiffViewer({ file, fileId, diff, status = "modified", additions,
       <span className="diff-viewer__counts"><b>+{additions ?? counts.additions}</b> <b>−{deletions ?? counts.deletions}</b></span>
       {onOpenFile && fileId && <button className="diff-viewer__open" type="button" onClick={() => onOpenFile(fileId)}>{t("Open file")}</button>}
     </header>
-    {open && <div className="diff-viewer__body" role="table" aria-label={`Changes in ${file}`} tabIndex={0}>
+    {open && <div className="diff-viewer__body" role="table" aria-label={tf("Changes in {file}", { file })} tabIndex={0}>
       {lines.map((line, index) => <div className={`diff-line diff-line--${line.kind}`} role="row" key={`${index}-${line.content}`}>
         <span className="diff-line__number" role="cell">{line.oldNumber ?? ""}</span>
         <span className="diff-line__number" role="cell">{line.newNumber ?? ""}</span>
