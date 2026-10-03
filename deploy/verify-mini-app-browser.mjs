@@ -102,6 +102,16 @@ try {
   await geometry('mobile initial navigation');
   await evaluate('window.scrollTo(0,document.body.scrollHeight)'); await geometry('mobile navigation after page scroll');
   await screenshot('mobile-home');
+  await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  const reduced = await evaluate("(()=>{const s=getComputedStyle(document.querySelector('.page.active')),b=getComputedStyle(document.querySelector('nav button'));return {animation:s.animationName,transition:b.transitionDuration}})()");
+  assert.equal(reduced.animation, 'none'); assert.equal(reduced.transition, '0s');
+  evidence.push({ check: 'reduced motion disables surface animations and interaction transitions', passed: true });
+  await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+  for (const width of [320, 360, 700]) {
+    await viewport(width, 844, true);
+    for (const label of ['Home', 'Projects', 'Agents', 'Settings']) { await click(label); await geometry(`${label} at ${width}px`); }
+  }
+  await viewport(390, 844, true); await click('Home');
   await click('Projects'); await click('Artifacts'); await wait(text('browser-proof.md')); await click('Preview'); await wait(text('Isolated browser artifact'));
   for (let index = 0; index < 6; index++) { await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 }); await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 }); assert.ok(await evaluate("Boolean(document.activeElement.closest('[role=dialog]'))"), 'Modal focus escaped on Tab'); }
   await click('Close'); assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Preview');
@@ -111,6 +121,9 @@ try {
   await evaluate("document.getElementById('prompt').focus()");
   const chatGeometry = await evaluate("(()=>{const c=document.querySelector('.composer').getBoundingClientRect(),s=document.querySelector('.conversation-stream');return {composerBottom:c.bottom,height:innerHeight,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,documentWidth:document.documentElement.scrollWidth,width:innerWidth}})()");
   assert.ok(chatGeometry.composerBottom <= chatGeometry.height + 1); assert.ok(chatGeometry.scrollHeight > chatGeometry.clientHeight); assert.ok(chatGeometry.documentWidth <= chatGeometry.width + 1); evidence.push({ check: 'long response independently scrolls; composer visible after keyboard-equivalent resize', ...chatGeometry }); await screenshot('mobile-chat-keyboard-equivalent');
+  const chatBounds = await evaluate("Array.from(document.querySelectorAll('.chathead,.composer,.conversation-pills,.tabs')).map(e=>{const r=e.getBoundingClientRect();return {name:e.className,left:r.left,right:r.right}})");
+  assert.ok(chatBounds.every(r=>r.left>=0 && r.right<=390), `Chat content clipped: ${JSON.stringify(chatBounds)}`);
+  evidence.push({ check: 'chat header, chips, tabs and composer fit inside mobile viewport', passed: true });
   await evaluate("document.querySelector('[aria-label=\"Back to dashboard\"]').click()"); await viewport(390, 844, true);
   await click('Settings'); await click('Integrations'); await wait(text('Official API fixture')); await click('Connect');
   await evaluate("document.getElementById('provider-key').value='must-not-cross-providers';Array.from(document.querySelectorAll('.management-row')).find(r=>r.innerText.includes('Fixture Provider')).querySelector('button').click()");
